@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Reseller Tracker</title>
+<meta name="theme-color" content="#0a0a0a"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0a0a0a;--s1:#111;--s2:#171717;--s3:#1f1f1f;--border:#272727;--border2:#333;
+  --text:#f5f5f5;--muted:#666;--muted2:#444;--accent:#e8ff5a;--accent2:#c8e000;
+  --green:#4ade80;--red:#f87171;--blue:#60a5fa;--yellow:#fbbf24;--orange:#fb923c;
+  --radius:10px;--radius-sm:7px;--radius-lg:14px;
+  --font-head:'Syne',sans-serif;--font-body:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:13px;min-height:100vh;overflow-x:hidden;}
+
+/* AUTH */
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem;}
+.auth-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:380px;}
+.auth-logo{font-family:var(--font-head);font-size:1.6rem;font-weight:800;color:var(--accent);margin-bottom:0.25rem;letter-spacing:-1px;}
+.auth-sub{color:var(--muted);font-size:11px;margin-bottom:2rem;letter-spacing:1px;text-transform:uppercase;}
+.auth-tabs{display:flex;background:var(--s2);border-radius:var(--radius-sm);padding:3px;margin-bottom:1.5rem;gap:3px;}
+.auth-tab{flex:1;padding:7px;border:none;background:transparent;color:var(--muted);font-size:12px;border-radius:5px;cursor:pointer;font-family:var(--font-body);}
+.auth-tab.active{background:var(--accent);color:#000;font-weight:500;}
+.fg{margin-bottom:1rem;}
+.fg label{display:block;font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.8px;}
+.fg input{width:100%;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;font-family:var(--font-body);transition:border 0.15s;}
+.fg input:focus{border-color:var(--accent);}
+.btn-auth{width:100%;padding:11px;background:var(--accent);color:#000;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-body);margin-top:0.5rem;transition:opacity 0.15s;}
+.btn-auth:hover{opacity:0.88;}
+.auth-err{color:var(--red);font-size:11px;margin-top:0.75rem;text-align:center;display:none;}
+
+/* SHELL */
+#app{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--font-head);font-weight:800;font-size:1.1rem;color:var(--accent);letter-spacing:-0.5px;}
+.main-tabs{display:flex;gap:0;}
+.main-tab{padding:0 20px;height:52px;display:flex;align-items:center;border:none;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-body);border-bottom:2px solid transparent;transition:all 0.15s;text-transform:uppercase;letter-spacing:1px;}
+.main-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.topbar-right{display:flex;gap:8px;align-items:center;}
+.tbtn{background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;}
+.tbtn:hover{border-color:var(--border2);color:var(--text);}
+
+.page{display:none;flex:1;}
+.page.active{display:flex;flex-direction:column;}
+
+/* SUB TABS */
+.sub-tabs{display:flex;gap:6px;padding:1rem 1.5rem 0;border-bottom:1px solid var(--border);background:var(--s1);}
+.sub-tab{padding:7px 16px;border:1px solid transparent;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;margin-bottom:-1px;border-bottom:1px solid transparent;}
+.sub-tab.active{background:var(--bg);color:var(--text);border-color:var(--border);border-bottom-color:var(--bg);}
+
+.content{padding:1.5rem;flex:1;}
+
+/* STATS DASHBOARD */
+.dash{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem;}
+.dash-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;}
+.dash-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;}
+.dash-val{font-size:1.6rem;font-family:var(--font-head);font-weight:700;color:var(--text);}
+.dash-val.g{color:var(--green);}
+.dash-val.r{color:var(--red);}
+.dash-val.a{color:var(--accent);}
+.period-tabs{display:flex;gap:4px;margin-bottom:1.25rem;}
+.period-tab{padding:5px 12px;border:1px solid var(--border);border-radius:99px;background:transparent;color:var(--muted);font-size:10px;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;}
+.period-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:8px;margin-bottom:1rem;align-items:center;flex-wrap:wrap;}
+.search-wrap{position:relative;flex:1;min-width:180px;}
+.search-wrap input{width:100%;padding:8px 12px 8px 32px;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font-body);}
+.search-wrap input:focus{border-color:var(--accent);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;}
+.btn{padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.btn:hover{border-color:var(--border2);background:var(--s2);}
+.btn.accent{background:var(--accent);color:#000;border-color:var(--accent);font-weight:500;}
+.btn.accent:hover{opacity:0.88;}
+
+/* TABLE */
+.table-container{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;}
+table{width:100%;border-collapse:collapse;min-width:900px;}
+th{padding:9px 14px;text-align:left;font-size:10px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--s1);}
+td{padding:11px 14px;border-bottom:1px solid var(--border2);vertical-align:middle;color:var(--text);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--s2);}
+.iname{font-weight:500;font-size:12px;}
+.isub{font-size:10px;color:var(--muted);margin-top:2px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:500;}
+.badge-sneakers{background:rgba(96,165,250,0.12);color:#60a5fa;}
+.badge-pokemon{background:rgba(251,191,36,0.12);color:#fbbf24;}
+.badge-misc{background:rgba(102,102,102,0.12);color:#888;}
+.badge-sealed{background:rgba(232,255,90,0.1);color:var(--accent);}
+.badge-cards{background:rgba(251,146,60,0.12);color:#fb923c;}
+.badge-hold{background:rgba(251,191,36,0.1);color:#fbbf24;}
+.badge-listed{background:rgba(96,165,250,0.1);color:#60a5fa;}
+.badge-sold{background:rgba(74,222,128,0.1);color:#4ade80;}
+.pos{color:var(--green);font-weight:500;}
+.neg{color:var(--red);font-weight:500;}
+.muted-val{color:var(--muted);}
+.row-actions{display:flex;gap:4px;}
+.icon-btn{background:transparent;border:1px solid var(--border);border-radius:5px;padding:4px 7px;color:var(--muted);font-size:11px;cursor:pointer;transition:all 0.15s;}
+.icon-btn:hover{background:var(--s2);color:var(--text);}
+.icon-btn.sell-btn:hover{border-color:var(--green);color:var(--green);}
+.icon-btn.del-btn:hover{border-color:var(--red);color:var(--red);}
+.empty{text-align:center;padding:4rem 1rem;color:var(--muted);}
+.empty-icon{font-size:2.5rem;display:block;margin-bottom:0.75rem;}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:200;padding:1rem;}
+.modal{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:580px;max-height:90vh;overflow-y:auto;padding:1.75rem;}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;}
+.modal-hdr h2{font-family:var(--font-head);font-size:1.1rem;font-weight:700;}
+.close-btn{background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:5px 9px;color:var(--muted);cursor:pointer;font-size:13px;}
+.modal-section{margin-bottom:1.25rem;}
+.modal-section-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-grid .full{grid-column:1/-1;}
+.fg2{margin-bottom:0;}
+.fg2 label{display:block;font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;}
+.fg2 input,.fg2 select,.fg2 textarea{width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font-body);transition:border 0.15s;}
+.fg2 input:focus,.fg2 select:focus{border-color:var(--accent);}
+.fg2 select option{background:var(--s2);}
+.modal-footer{display:flex;gap:8px;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);}
+.btn-cancel{flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-body);}
+.btn-save{flex:2;padding:10px;background:var(--accent);color:#000;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font-body);}
+
+/* PURCHASE SOURCES */
+.sources-list{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.source-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;}
+.source-row input,.source-row select{padding:7px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font-body);width:100%;}
+.source-row input:focus,.source-row select:focus{border-color:var(--accent);}
+.remove-src{background:transparent;border:1px solid var(--border);border-radius:5px;padding:7px 8px;color:var(--muted);cursor:pointer;font-size:11px;white-space:nowrap;}
+.remove-src:hover{border-color:var(--red);color:var(--red);}
+.add-src-btn{background:transparent;border:1px dashed var(--border2);border-radius:var(--radius-sm);padding:7px;color:var(--muted);font-size:11px;cursor:pointer;width:100%;font-family:var(--font-body);transition:all 0.15s;}
+.add-src-btn:hover{border-color:var(--accent);color:var(--accent);}
+.avg-cost-display{background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--accent);margin-top:6px;}
+
+/* AUTOCOMPLETE */
+.autocomplete-wrap{position:relative;}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);z-index:300;max-height:200px;overflow-y:auto;display:none;}
+.autocomplete-item{padding:8px 12px;cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
+.autocomplete-item:last-child{border-bottom:none;}
+.autocomplete-item:hover{background:var(--s3);}
+.autocomplete-item .ac-name{color:var(--text);}
+.autocomplete-item .ac-meta{color:var(--muted);font-size:10px;}
+
+/* SHIPPING */
+.ship-section{background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-top:8px;display:none;}
+.toggle-row{display:flex;gap:6px;margin-bottom:0;}
+.toggle-btn{flex:1;padding:6px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;}
+.toggle-btn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+
+/* MARKET LINK */
+.market-link{display:inline-flex;align-items:center;gap:4px;color:var(--accent);font-size:10px;text-decoration:none;margin-top:4px;cursor:pointer;}
+.market-link:hover{opacity:0.8;}
+
+/* LOADING */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media(max-width:700px){
+  .dash{grid-template-columns:repeat(2,1fr);}
+  .main-tab span{display:none;}
+  .topbar{padding:0 1rem;}
+  .content{padding:1rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">TRACKER</div>
+    <div class="auth-sub">Reseller Inventory & Sales</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="setAuthMode('login')">Sign in</button>
+      <button class="auth-tab" onclick="setAuthMode('signup')">Sign up</button>
+    </div>
+    <div class="fg">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="you@email.com"/>
+    </div>
+    <div class="fg">
+      <label>Password</label>
+      <input type="password" id="auth-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()"/>
+    </div>
+    <button class="btn-auth" id="auth-btn" onclick="doAuth()">Sign in</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="logo">TRACKER</div>
+    <div class="main-tabs">
+      <button class="main-tab active" onclick="showPage('inventory')">📦 <span>Inventory</span></button>
+      <button class="main-tab" onclick="showPage('sales')">💰 <span>Sales</span></button>
+    </div>
+    <div class="topbar-right">
+      <button class="tbtn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- INVENTORY PAGE -->
+  <div class="page active" id="page-inventory">
+    <div class="sub-tabs" id="inv-sub-tabs">
+      <button class="sub-tab active" onclick="setInvTab('all',this)">All</button>
+      <button class="sub-tab" onclick="setInvTab('sneakers',this)">👟 Sneakers</button>
+      <button class="sub-tab" onclick="setInvTab('pokemon',this)">⚡ Pokémon</button>
+      <button class="sub-tab" onclick="setInvTab('misc',this)">📦 Misc</button>
+    </div>
+    <div class="content">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="inv-search" placeholder="Search inventory…" oninput="renderInvTable()"/>
+        </div>
+        <button class="btn accent" onclick="openInvModal()">+ Add Item</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Qty</th>
+              <th>Where Bought</th>
+              <th>Purchase Date</th>
+              <th>Avg Cost</th>
+              <th>Market Price</th>
+              <th>Listed Price</th>
+              <th>Proj. Profit</th>
+              <th>Margin</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+        <div id="inv-empty" class="empty" style="display:none;">
+          <span class="empty-icon">📦</span>
+          No items yet — add your first item above
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SALES PAGE -->
+  <div class="page" id="page-sales">
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="setSalesTab('all',this)">All</button>
+      <button class="sub-tab" onclick="setSalesTab('sneakers',this)">👟 Sneakers</button>
+      <button class="sub-tab" onclick="setSalesTab('pokemon',this)">⚡ Pokémon</button>
+      <button class="sub-tab" onclick="setSalesTab('misc',this)">📦 Misc</button>
+    </div>
+    <div class="content">
+      <div class="period-tabs">
+        <button class="period-tab active" onclick="setPeriod('today',this)">Today</button>
+        <button class="period-tab" onclick="setPeriod('week',this)">This Week</button>
+        <button class="period-tab" onclick="setPeriod('month',this)">This Month</button>
+        <button class="period-tab" onclick="setPeriod('year',this)">This Year</button>
+        <button class="period-tab" onclick="setPeriod('all',this)">All Time</button>
+      </div>
+      <div class="dash">
+        <div class="dash-card"><div class="dash-label">Revenue</div><div class="dash-val a" id="d-rev">$0</div></div>
+        <div class="dash-card"><div class="dash-label">Qty Sold</div><div class="dash-val" id="d-qty">0</div></div>
+        <div class="dash-card"><div class="dash-label">Profit</div><div class="dash-val g" id="d-profit">$0</div></div>
+        <div class="dash-card"><div class="dash-label">Margin</div><div class="dash-val" id="d-margin">0%</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="sales-search" placeholder="Search sales…" oninput="renderSalesTable()"/>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Qty Sold</th>
+              <th>Sale Date</th>
+              <th>Days to Sell</th>
+              <th>Where Bought</th>
+              <th>Sold On</th>
+              <th>Shipping</th>
+              <th>Sale Price</th>
+              <th>Total Cost</th>
+              <th>Profit</th>
+              <th>Margin</th>
+              <th>Miles</th>
+              <th>IRS Deduction</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="sales-tbody"></tbody>
+        </table>
+        <div id="sales-empty" class="empty" style="display:none;">
+          <span class="empty-icon">💰</span>
+          No sales yet — mark items as sold from inventory
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INVENTORY MODAL -->
+<div id="inv-modal" style="display:none;" class="modal-bg" onclick="if(event.target===this)closeInvModal()">
+<div class="modal">
+  <div class="modal-hdr">
+    <h2 id="inv-modal-title">Add Item</h2>
+    <button class="close-btn" onclick="closeInvModal()">✕</button>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Item Details</div>
+    <div class="form-grid">
+      <div class="fg2 full">
+        <label>Category</label>
+        <select id="f-cat" onchange="onCatChange()">
+          <option value="pokemon">⚡ Pokémon</option>
+          <option value="sneakers">👟 Sneakers</option>
+          <option value="misc">📦 Misc</option>
+        </select>
+      </div>
+      <div class="fg2 full autocomplete-wrap">
+        <label>Item Name</label>
+        <input type="text" id="f-name" placeholder="Start typing…" oninput="onNameInput()" autocomplete="off"/>
+        <div class="autocomplete-list" id="ac-list"></div>
+      </div>
+      <div class="fg2 full" id="f-pokemon-type-row">
+        <label>Pokémon Type</label>
+        <select id="f-pokemon-type">
+          <option value="sealed">Sealed</option>
+          <option value="cards">Cards</option>
+        </select>
+      </div>
+      <div class="fg2 full" id="f-condition-row" style="display:none;">
+        <label>Condition</label>
+        <select id="f-condition">
+          <option value="New">New</option>
+          <option value="VNDS">VNDS</option>
+          <option value="Lightly Used">Lightly Used</option>
+          <option value="Used">Used</option>
+          <option value="Beat">Beat</option>
+        </select>
+      </div>
+      <div class="fg2">
+        <label>Qty</label>
+        <input type="number" id="f-qty" value="1" min="1"/>
+      </div>
+      <div class="fg2">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="hold">Holding</option>
+          <option value="listed">Listed</option>
+          <option value="sold">Sold</option>
+        </select>
+      </div>
+      <div class="fg2">
+        <label>Purchase Date</label>
+        <input type="date" id="f-purchase-date"/>
+      </div>
+      <div class="fg2">
+        <label>Listed Price ($)</label>
+        <input type="number" id="f-listed" placeholder="0.00" min="0" step="0.01"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Market Price</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Market Price ($)</label>
+        <input type="number" id="f-market" placeholder="0.00" min="0" step="0.01" oninput="calcProjected()"/>
+      </div>
+      <div class="fg2" style="display:flex;flex-direction:column;justify-content:flex-end;">
+        <div id="market-link-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Purchase Sources (add each separately to average cost)</div>
+    <div class="sources-list" id="sources-list"></div>
+    <button class="add-src-btn" onclick="addSourceRow()">+ Add Purchase Source</button>
+    <div class="avg-cost-display" id="avg-cost-display" style="display:none;"></div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Projected Profit</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Avg Cost / Unit</label>
+        <input type="text" id="f-avg-cost-display" readonly placeholder="Auto-calculated" style="color:var(--accent);"/>
+      </div>
+      <div class="fg2">
+        <label>Proj. Profit</label>
+        <input type="text" id="f-proj-profit" readonly placeholder="Auto-calculated" style="color:var(--green);"/>
+      </div>
+      <div class="fg2">
+        <label>Proj. Margin</label>
+        <input type="text" id="f-proj-margin" readonly placeholder="Auto-calculated" style="color:var(--green);"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn-cancel" onclick="closeInvModal()">Cancel</button>
+    <button class="btn-save" onclick="saveInvItem()">Save Item</button>
+  </div>
+</div>
+</div>
+
+<!-- SALE MODAL -->
+<div id="sale-modal" style="display:none;" class="modal-bg" onclick="if(event.target===this)closeSaleModal()">
+<div class="modal">
+  <div class="modal-hdr">
+    <h2>Record Sale</h2>
+    <button class="close-btn" onclick="closeSaleModal()">✕</button>
+  </div>
+  <div id="sale-item-info" style="background:var(--s2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1.25rem;font-size:12px;color:var(--muted);"></div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Sale Details</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Qty Sold</label>
+        <input type="number" id="s-qty" value="1" min="1" oninput="calcSaleProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Sale Date</label>
+        <input type="date" id="s-sale-date"/>
+      </div>
+      <div class="fg2">
+        <label>Sale Price ($)</label>
+        <input type="number" id="s-price" placeholder="0.00" min="0" step="0.01" oninput="calcSaleProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Sold On</label>
+        <select id="s-platform">
+          <option value="Facebook Marketplace">Facebook Marketplace</option>
+          <option value="StockX">StockX</option>
+          <option value="Local / Cash">Local / Cash</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Shipping</div>
+    <div class="toggle-row" style="margin-bottom:10px;">
+      <button class="toggle-btn active" id="ship-local-btn" onclick="setShipMode('local')">Local</button>
+      <button class="toggle-btn" id="ship-shipped-btn" onclick="setShipMode('shipped')">Shipped</button>
+    </div>
+    <div class="ship-section" id="ship-section">
+      <div class="form-grid">
+        <div class="fg2">
+          <label>Carrier</label>
+          <select id="s-carrier">
+            <option>USPS</option><option>UPS</option><option>FedEx</option><option>Other</option>
+          </select>
+        </div>
+        <div class="fg2">
+          <label>Shipping Cost ($)</label>
+          <input type="number" id="s-ship-cost" placeholder="0.00" min="0" step="0.01" oninput="calcSaleProfit()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Mileage</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Miles Driven</label>
+        <input type="number" id="s-miles" placeholder="0" min="0" step="0.1" oninput="calcSaleProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>IRS Deduction ($0.70/mi)</label>
+        <input type="text" id="s-irs" readonly placeholder="Auto-calculated" style="color:var(--accent);"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Summary</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Total Cost</label>
+        <input type="text" id="s-total-cost" readonly style="color:var(--muted);"/>
+      </div>
+      <div class="fg2">
+        <label>Profit</label>
+        <input type="text" id="s-profit-display" readonly style="color:var(--green);"/>
+      </div>
+      <div class="fg2">
+        <label>Margin</label>
+        <input type="text" id="s-margin-display" readonly style="color:var(--green);"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn-cancel" onclick="closeSaleModal()">Cancel</button>
+    <button class="btn-save" onclick="saveSale()">Record Sale</button>
+  </div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ltirfvrtvgofjdbzougj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FFE6fIgL7S30bUgSHca8og_aaqLhEfP';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const POKEMON_WHERE_BOUGHT = ['Walmart','Vending Machine','Best Buy','Target','Costco','eBay','Facebook Marketplace','Local','PKC','Sam\'s Club','Other'];
+const IRS_RATE = 0.70;
+
+const SEALED_PRODUCTS = [
+  'Chaos Rising Booster Box','Chaos Rising Booster Bundle','Chaos Rising Elite Trainer Box',
+  'Prismatic Evolutions Booster Box','Prismatic Evolutions Elite Trainer Box','Prismatic Evolutions Booster Bundle',
+  'Surging Sparks Booster Box','Surging Sparks Elite Trainer Box','Surging Sparks Booster Bundle',
+  'Stellar Crown Booster Box','Stellar Crown Elite Trainer Box',
+  'Twilight Masquerade Booster Box','Twilight Masquerade Elite Trainer Box',
+  'Temporal Forces Booster Box','Temporal Forces Elite Trainer Box',
+  'Paradox Rift Booster Box','Paradox Rift Elite Trainer Box',
+  'Obsidian Flames Booster Box','Obsidian Flames Elite Trainer Box',
+  'Paldea Evolved Booster Box','Paldea Evolved Elite Trainer Box',
+  'Scarlet & Violet Base Booster Box','Scarlet & Violet Base Elite Trainer Box',
+  '151 Booster Box','151 Elite Trainer Box','151 Binder Collection',
+  'Crown Zenith Booster Box','Crown Zenith Elite Trainer Box','Crown Zenith Galarian Gallery Premium Figure Collection',
+  'Silver Tempest Booster Box','Silver Tempest Elite Trainer Box',
+  'Lost Origin Booster Box','Lost Origin Elite Trainer Box',
+  'Pokemon GO Booster Box','Pokemon GO Elite Trainer Box',
+  'Astral Radiance Booster Box','Astral Radiance Elite Trainer Box',
+  'Brilliant Stars Booster Box','Brilliant Stars Elite Trainer Box',
+  'Fusion Strike Booster Box','Fusion Strike Elite Trainer Box',
+  'Evolving Skies Booster Box','Evolving Skies Elite Trainer Box',
+  'Chilling Reign Booster Box','Chilling Reign Elite Trainer Box',
+  'Battle Styles Booster Box','Battle Styles Elite Trainer Box',
+  'Shining Fates Elite Trainer Box','Shining Fates Mad Party Pin Collections',
+  'Vivid Voltage Booster Box','Vivid Voltage Elite Trainer Box',
+  'Champions Path Elite Trainer Box',
+  'Darkness Ablaze Booster Box','Darkness Ablaze Elite Trainer Box',
+  'Rebel Clash Booster Box','Rebel Clash Elite Trainer Box',
+  'Sword & Shield Base Booster Box','Sword & Shield Base Elite Trainer Box',
+  'Booster Bundle','Mini Tin','Poster Collection','V Battle Deck','Premium Collection',
+];
+
+let user = null;
+let invItems = [];
+let salesItems = [];
+let invTab = 'all';
+let salesTab = 'all';
+let salesPeriod = 'month';
+let editingInvId = null;
+let saleSrcItem = null;
+let shipMode = 'local';
+let sources = [];
+
+// ── AUTH ──────────────────────────────────────────────────
+let authMode = 'login';
+function setAuthMode(m){
+  authMode = m;
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&m==='login')||(i===1&&m==='signup')));
+  document.getElementById('auth-btn').textContent = m==='login'?'Sign in':'Create account';
+}
+async function doAuth(){
+  const email=document.getElementById('auth-email').value.trim();
+  const pw=document.getElementById('auth-pw').value;
+  const err=document.getElementById('auth-err');
+  err.style.display='none';
+  if(!email||!pw){showAuthErr('Fill in both fields');return;}
+  const btn=document.getElementById('auth-btn');
+  btn.textContent='…';btn.disabled=true;
+  const fn=authMode==='login'?sb.auth.signInWithPassword.bind(sb.auth):sb.auth.signUp.bind(sb.auth);
+  const {error,data}=await fn({email,password:pw});
+  btn.textContent=authMode==='login'?'Sign in':'Create account';btn.disabled=false;
+  if(error)showAuthErr(error.message);
+  else if(authMode==='signup'&&!data.session)showAuthErr('Check your email to confirm, then sign in.');
+}
+function showAuthErr(m){const e=document.getElementById('auth-err');e.textContent=m;e.style.display='block';}
+async function signOut(){await sb.auth.signOut();}
+
+sb.auth.onAuthStateChange((ev,session)=>{
+  if(session){
+    user=session.user;
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    loadAll();
+  } else {
+    user=null;
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
+});
+
+// ── DATA ──────────────────────────────────────────────────
+async function loadAll(){
+  const [{data:inv},{data:sales}]=await Promise.all([
+    sb.from('items').select('*').order('created_at',{ascending:false}),
+    sb.from('sales').select('*').order('sale_date',{ascending:false})
+  ]);
+  invItems=inv||[];
+  salesItems=sales||[];
+  renderInvTable();
+  renderSalesTable();
+  renderDash();
+}
+
+// ── PAGES ─────────────────────────────────────────────────
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&p==='inventory')||(i===1&&p==='sales')));
+}
+function setInvTab(t,el){invTab=t;document.querySelectorAll('#inv-sub-tabs .sub-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderInvTable();}
+function setSalesTab(t,el){salesTab=t;document.querySelectorAll('#page-sales .sub-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderSalesTable();renderDash();}
+function setPeriod(p,el){salesPeriod=p;document.querySelectorAll('.period-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderDash();renderSalesTable();}
+
+// ── INVENTORY TABLE ───────────────────────────────────────
+function getInvFiltered(){
+  const q=document.getElementById('inv-search').value.toLowerCase();
+  return invItems.filter(i=>(invTab==='all'||i.category===invTab)&&(!q||i.name.toLowerCase().includes(q)));
+}
+
+function renderInvTable(){
+  const rows=getInvFiltered();
+  const tbody=document.getElementById('inv-tbody');
+  const empty=document.getElementById('inv-empty');
+  if(!rows.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=rows.map(item=>{
+    const avg=item.avg_cost||0;
+    const listed=item.listed_price||0;
+    const profit=listed>0?listed-avg:null;
+    const margin=listed>0&&avg>0?((profit/listed)*100):null;
+    const profHtml=profit!==null?`<span class="${profit>=0?'pos':'neg'}">${profit>=0?'+':''}$${profit.toFixed(2)}</span>`:'<span class="muted-val">—</span>';
+    const marginHtml=margin!==null?`<span class="${margin>=0?'pos':'neg'}">${margin.toFixed(1)}%</span>`:'<span class="muted-val">—</span>';
+    const catBadge={sneakers:'badge-sneakers',pokemon:'badge-pokemon',misc:'badge-misc'}[item.category]||'';
+    const typeBadge=item.category==='pokemon'?(item.pokemon_type==='sealed'?'<span class="badge badge-sealed">Sealed</span>':'<span class="badge badge-cards">Cards</span>'):'';
+    const condBadge=item.category==='sneakers'&&item.condition?`<span style="font-size:10px;color:var(--muted);">${item.condition}</span>`:'';
+    const statusBadge=`<span class="badge badge-${item.status}">${{hold:'Holding',listed:'Listed',sold:'Sold'}[item.status]||item.status}</span>`;
+    const whereBought=(item.sources||[]).map(s=>s.where).filter(Boolean).join(', ')||'—';
+    return `<tr>
+      <td><div class="iname">${esc(item.name)}</div><div class="isub">${typeBadge}${condBadge}</div></td>
+      <td><span class="badge ${catBadge}">${item.category}</span></td>
+      <td>${item.qty||1}</td>
+      <td style="font-size:11px;color:var(--muted);">${esc(whereBought)}</td>
+      <td style="font-size:11px;color:var(--muted);">${item.purchase_date||'—'}</td>
+      <td>$${avg.toFixed(2)}</td>
+      <td>${item.market_price?'$'+Number(item.market_price).toFixed(2):'<span class="muted-val">—</span>'}</td>
+      <td>${listed>0?'$'+listed.toFixed(2):'<span class="muted-val">—</span>'}</td>
+      <td>${profHtml}</td>
+      <td>${marginHtml}</td>
+      <td>${statusBadge}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="editInvItem('${item.id}')">✏️</button>
+        <button class="icon-btn sell-btn" onclick="openSaleModal('${item.id}')" title="Record sale">💰</button>
+        <button class="icon-btn del-btn" onclick="deleteInvItem('${item.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── INV MODAL ─────────────────────────────────────────────
+function openInvModal(){
+  editingInvId=null;
+  sources=[{where:'',qty:1,cost:''}];
+  document.getElementById('inv-modal-title').textContent='Add Item';
+  document.getElementById('f-cat').value='pokemon';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-qty').value=1;
+  document.getElementById('f-status').value='hold';
+  document.getElementById('f-purchase-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-listed').value='';
+  document.getElementById('f-market').value='';
+  document.getElementById('f-pokemon-type').value='sealed';
+  document.getElementById('f-proj-profit').value='';
+  document.getElementById('f-proj-margin').value='';
+  document.getElementById('f-avg-cost-display').value='';
+  document.getElementById('avg-cost-display').style.display='none';
+  onCatChange();
+  renderSources();
+  updateMarketLink();
+  document.getElementById('inv-modal').style.display='flex';
+}
+
+function closeInvModal(){document.getElementById('inv-modal').style.display='none';document.getElementById('ac-list').style.display='none';}
+
+function onCatChange(){
+  const cat=document.getElementById('f-cat').value;
+  document.getElementById('f-pokemon-type-row').style.display=cat==='pokemon'?'':'none';
+  document.getElementById('f-condition-row').style.display=cat==='sneakers'?'':'none';
+  renderSources();
+  updateMarketLink();
+}
+
+function editInvItem(id){
+  const item=invItems.find(i=>i.id===id);
+  if(!item)return;
+  editingInvId=id;
+  sources=item.sources&&item.sources.length?item.sources.map(s=>({...s})):[{where:'',qty:1,cost:''}];
+  document.getElementById('inv-modal-title').textContent='Edit Item';
+  document.getElementById('f-cat').value=item.category;
+  document.getElementById('f-name').value=item.name;
+  document.getElementById('f-qty').value=item.qty||1;
+  document.getElementById('f-status').value=item.status||'hold';
+  document.getElementById('f-purchase-date').value=item.purchase_date||'';
+  document.getElementById('f-listed').value=item.listed_price||'';
+  document.getElementById('f-market').value=item.market_price||'';
+  document.getElementById('f-pokemon-type').value=item.pokemon_type||'sealed';
+  if(item.condition)document.getElementById('f-condition').value=item.condition;
+  onCatChange();
+  renderSources();
+  calcAvgCost();
+  calcProjected();
+  updateMarketLink();
+  document.getElementById('inv-modal').style.display='flex';
+}
+
+async function saveInvItem(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('Enter item name');return;}
+  const avg=calcAvgCost();
+  const payload={
+    user_id:user.id,
+    category:document.getElementById('f-cat').value,
+    name,
+    qty:parseInt(document.getElementById('f-qty').value)||1,
+    status:document.getElementById('f-status').value,
+    purchase_date:document.getElementById('f-purchase-date').value||null,
+    listed_price:parseFloat(document.getElementById('f-listed').value)||0,
+    market_price:parseFloat(document.getElementById('f-market').value)||0,
+    avg_cost:avg,
+    sources:sources.filter(s=>s.where||s.cost),
+    pokemon_type:document.getElementById('f-cat').value==='pokemon'?document.getElementById('f-pokemon-type').value:null,
+    condition:document.getElementById('f-cat').value==='sneakers'?document.getElementById('f-condition').value:null,
+  };
+  const btn=document.querySelector('#inv-modal .btn-save');
+  btn.textContent='Saving…';btn.disabled=true;
+  let error;
+  if(editingInvId){({error}=await sb.from('items').update(payload).eq('id',editingInvId));}
+  else{({error}=await sb.from('items').insert(payload));}
+  btn.textContent='Save Item';btn.disabled=false;
+  if(error){alert('Error: '+error.message);return;}
+  closeInvModal();
+  await loadAll();
+}
+
+async function deleteInvItem(id){
+  if(!confirm('Delete this item?'))return;
+  await sb.from('items').delete().eq('id',id);
+  await loadAll();
+}
+
+// ── PURCHASE SOURCES ──────────────────────────────────────
+function renderSources(){
+  const cat=document.getElementById('f-cat').value;
+  const isPokemon=cat==='pokemon';
+  const list=document.getElementById('sources-list');
+  list.innerHTML=sources.map((s,i)=>{
+    const whereInput=isPokemon
+      ?`<select onchange="sources[${i}].where=this.value;calcAvgCost();">${POKEMON_WHERE_BOUGHT.map(w=>`<option${s.where===w?' selected':''}>${w}</option>`).join('')}</select>`
+      :`<input type="text" placeholder="Where bought" value="${esc(s.where||'')}" oninput="sources[${i}].where=this.value;"/>`;
+    return `<div class="source-row">
+      ${whereInput}
+      <input type="number" placeholder="Cost per unit ($)" value="${s.cost||''}" step="0.01" min="0" oninput="sources[${i}].cost=this.value;calcAvgCost();" style="padding:7px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font-body);width:100%;"/>
+      <button class="remove-src" onclick="removeSource(${i})" ${sources.length<=1?'disabled':''}>✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addSourceRow(){sources.push({where:'',qty:1,cost:''});renderSources();}
+function removeSource(i){if(sources.length<=1)return;sources.splice(i,1);renderSources();calcAvgCost();}
+
+function calcAvgCost(){
+  const validSources=sources.filter(s=>s.cost&&parseFloat(s.cost)>0);
+  if(!validSources.length){
+    document.getElementById('avg-cost-display').style.display='none';
+    document.getElementById('f-avg-cost-display').value='';
+    calcProjected();
+    return 0;
+  }
+  const totalQty=parseInt(document.getElementById('f-qty').value)||1;
+  const perSource=totalQty/validSources.length;
+  const totalCost=validSources.reduce((sum,s)=>sum+(parseFloat(s.cost)*perSource),0);
+  const avg=totalCost/totalQty;
+  const disp=document.getElementById('avg-cost-display');
+  disp.style.display='block';
+  disp.textContent=`Avg cost: $${avg.toFixed(2)} / unit`;
+  document.getElementById('f-avg-cost-display').value='$'+avg.toFixed(2);
+  calcProjected(avg);
+  return avg;
+}
+
+function calcProjected(avg){
+  if(avg===undefined){
+    const validSources=sources.filter(s=>s.cost&&parseFloat(s.cost)>0);
+    if(!validSources.length){avg=0;}else{
+      const totalQty=parseInt(document.getElementById('f-qty').value)||1;
+      const perSource=totalQty/validSources.length;
+      avg=validSources.reduce((sum,s)=>sum+(parseFloat(s.cost)*perSource),0)/totalQty;
+    }
+  }
+  const listed=parseFloat(document.getElementById('f-listed').value)||0;
+  if(avg>0&&listed>0){
+    const profit=listed-avg;
+    const margin=(profit/listed)*100;
+    document.getElementById('f-proj-profit').value=(profit>=0?'+':'')+'$'+profit.toFixed(2);
+    document.getElementById('f-proj-margin').value=margin.toFixed(1)+'%';
+  } else {
+    document.getElementById('f-proj-profit').value='';
+    document.getElementById('f-proj-margin').value='';
+  }
+}
+
+// ── AUTOCOMPLETE ──────────────────────────────────────────
+function onNameInput(){
+  const val=document.getElementById('f-name').value;
+  const cat=document.getElementById('f-cat').value;
+  const list=document.getElementById('ac-list');
+  if(!val||val.length<2){list.style.display='none';return;}
+  let suggestions=[];
+  if(cat==='pokemon'){
+    suggestions=SEALED_PRODUCTS.filter(p=>p.toLowerCase().includes(val.toLowerCase())).slice(0,8);
+    const pastNames=[...new Set(invItems.filter(i=>i.category==='pokemon').map(i=>i.name))].filter(n=>n.toLowerCase().includes(val.toLowerCase()));
+    suggestions=[...new Set([...pastNames,...suggestions])].slice(0,8);
+  } else {
+    const pastNames=[...new Set(invItems.filter(i=>i.category===cat).map(i=>i.name))].filter(n=>n.toLowerCase().includes(val.toLowerCase()));
+    suggestions=pastNames.slice(0,8);
+  }
+  if(!suggestions.length){list.style.display='none';return;}
+  list.innerHTML=suggestions.map(s=>{
+    const past=invItems.find(i=>i.name===s&&i.category===cat);
+    const meta=past?`Last market: ${past.market_price?'$'+past.market_price:'—'}`:'';
+    return `<div class="autocomplete-item" onclick="selectAC('${esc(s)}')">
+      <span class="ac-name">${esc(s)}</span>
+      <span class="ac-meta">${meta}</span>
+    </div>`;
+  }).join('');
+  list.style.display='block';
+}
+
+function selectAC(name){
+  document.getElementById('f-name').value=name;
+  document.getElementById('ac-list').style.display='none';
+  const past=invItems.find(i=>i.name===name&&i.category===document.getElementById('f-cat').value);
+  if(past&&past.market_price){document.getElementById('f-market').value=past.market_price;calcProjected();}
+  updateMarketLink();
+}
+
+document.addEventListener('click',e=>{if(!e.target.closest('.autocomplete-wrap'))document.getElementById('ac-list').style.display='none';});
+
+function updateMarketLink(){
+  const name=document.getElementById('f-name').value;
+  const cat=document.getElementById('f-cat').value;
+  const wrap=document.getElementById('market-link-wrap');
+  if(!name){wrap.innerHTML='';return;}
+  if(cat==='pokemon'){
+    wrap.innerHTML=`<a class="market-link" href="https://www.tcgplayer.com/search/pokemon/product?productLineName=pokemon&q=${encodeURIComponent(name)}&view=grid" target="_blank">🔗 TCGPlayer →</a>`;
+  } else if(cat==='sneakers'){
+    wrap.innerHTML=`<a class="market-link" href="https://stockx.com/search?s=${encodeURIComponent(name)}" target="_blank">🔗 StockX →</a>`;
+  } else {
+    wrap.innerHTML='';
+  }
+}
+
+// ── SALES ─────────────────────────────────────────────────
+function getPeriodDates(){
+  const now=new Date();
+  const start=new Date();
+  if(salesPeriod==='today'){start.setHours(0,0,0,0);}
+  else if(salesPeriod==='week'){const d=now.getDay();start.setDate(now.getDate()-d);start.setHours(0,0,0,0);}
+  else if(salesPeriod==='month'){start.setDate(1);start.setHours(0,0,0,0);}
+  else if(salesPeriod==='year'){start.setMonth(0,1);start.setHours(0,0,0,0);}
+  else{return null;}
+  return{start,end:new Date()};
+}
+
+function getSalesFiltered(){
+  const q=document.getElementById('sales-search').value.toLowerCase();
+  const range=getPeriodDates();
+  return salesItems.filter(s=>{
+    const catMatch=salesTab==='all'||s.category===salesTab;
+    const qMatch=!q||s.item_name.toLowerCase().includes(q);
+    let dateMatch=true;
+    if(range&&s.sale_date){const d=new Date(s.sale_date);dateMatch=d>=range.start&&d<=range.end;}
+    return catMatch&&qMatch&&dateMatch;
+  });
+}
+
+function renderDash(){
+  const rows=getSalesFiltered();
+  const rev=rows.reduce((sum,s)=>sum+(s.sale_price*s.qty_sold),0);
+  const qty=rows.reduce((sum,s)=>sum+s.qty_sold,0);
+  const cost=rows.reduce((sum,s)=>sum+((s.total_cost||0)),0);
+  const profit=rev-cost;
+  const margin=rev>0?(profit/rev)*100:0;
+  document.getElementById('d-rev').textContent='$'+rev.toFixed(0);
+  document.getElementById('d-qty').textContent=qty;
+  const pe=document.getElementById('d-profit');
+  pe.textContent=(profit>=0?'+':'')+'$'+profit.toFixed(0);
+  pe.className='dash-val '+(profit>=0?'g':'r');
+  document.getElementById('d-margin').textContent=margin.toFixed(1)+'%';
+}
+
+function renderSalesTable(){
+  const rows=getSalesFiltered();
+  const tbody=document.getElementById('sales-tbody');
+  const empty=document.getElementById('sales-empty');
+  if(!rows.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=rows.map(s=>{
+    const profit=s.sale_price*s.qty_sold-(s.total_cost||0);
+    const margin=s.sale_price>0?(profit/(s.sale_price*s.qty_sold)*100):0;
+    const irs=(s.miles||0)*IRS_RATE;
+    const catBadge={sneakers:'badge-sneakers',pokemon:'badge-pokemon',misc:'badge-misc'}[s.category]||'';
+    return `<tr>
+      <td><div class="iname">${esc(s.item_name)}</div></td>
+      <td><span class="badge ${catBadge}">${s.category}</span></td>
+      <td>${s.qty_sold}</td>
+      <td style="font-size:11px;">${s.sale_date||'—'}</td>
+      <td style="text-align:center;">${s.days_to_sell!==null?s.days_to_sell+'d':'—'}</td>
+      <td style="font-size:11px;color:var(--muted);">${esc(s.where_bought||'—')}</td>
+      <td style="font-size:11px;">${esc(s.platform||'—')}</td>
+      <td style="font-size:11px;color:var(--muted);">${s.shipped?`${s.carrier||''} $${(s.shipping_cost||0).toFixed(2)}`:'Local'}</td>
+      <td>$${(s.sale_price*s.qty_sold).toFixed(2)}</td>
+      <td style="color:var(--muted);">$${(s.total_cost||0).toFixed(2)}</td>
+      <td><span class="${profit>=0?'pos':'neg'}">${profit>=0?'+':''}$${profit.toFixed(2)}</span></td>
+      <td><span class="${margin>=0?'pos':'neg'}">${margin.toFixed(1)}%</span></td>
+      <td style="color:var(--muted);">${s.miles||0}</td>
+      <td style="color:var(--accent);">$${irs.toFixed(2)}</td>
+      <td><button class="icon-btn del-btn" onclick="deleteSale('${s.id}')">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── SALE MODAL ────────────────────────────────────────────
+function openSaleModal(invId){
+  const item=invItems.find(i=>i.id===invId);
+  if(!item)return;
+  saleSrcItem=item;
+  shipMode='local';
+  document.getElementById('ship-section').style.display='none';
+  document.getElementById('ship-local-btn').classList.add('active');
+  document.getElementById('ship-shipped-btn').classList.remove('active');
+  document.getElementById('sale-item-info').innerHTML=`<strong>${esc(item.name)}</strong> &nbsp;·&nbsp; Avg cost: <span style="color:var(--accent)">$${(item.avg_cost||0).toFixed(2)}/unit</span> &nbsp;·&nbsp; In stock: <span style="color:var(--text)">${item.qty}</span>`;
+  document.getElementById('s-qty').value=1;
+  document.getElementById('s-qty').max=item.qty;
+  document.getElementById('s-sale-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('s-price').value='';
+  document.getElementById('s-miles').value='';
+  document.getElementById('s-ship-cost').value='';
+  document.getElementById('s-irs').value='';
+  document.getElementById('s-total-cost').value='';
+  document.getElementById('s-profit-display').value='';
+  document.getElementById('s-margin-display').value='';
+  document.getElementById('sale-modal').style.display='flex';
+}
+
+function closeSaleModal(){document.getElementById('sale-modal').style.display='none';saleSrcItem=null;}
+
+function setShipMode(m){
+  shipMode=m;
+  document.getElementById('ship-local-btn').classList.toggle('active',m==='local');
+  document.getElementById('ship-shipped-btn').classList.toggle('active',m==='shipped');
+  document.getElementById('ship-section').style.display=m==='shipped'?'block':'none';
+  calcSaleProfit();
+}
+
+function calcSaleProfit(){
+  if(!saleSrcItem)return;
+  const qty=parseInt(document.getElementById('s-qty').value)||1;
+  const price=parseFloat(document.getElementById('s-price').value)||0;
+  const shipCost=shipMode==='shipped'?(parseFloat(document.getElementById('s-ship-cost').value)||0):0;
+  const miles=parseFloat(document.getElementById('s-miles').value)||0;
+  const irs=miles*IRS_RATE;
+  const itemCost=(saleSrcItem.avg_cost||0)*qty;
+  const totalCost=itemCost+shipCost;
+  const revenue=price*qty;
+  const profit=revenue-totalCost;
+  const margin=revenue>0?(profit/revenue)*100:0;
+  document.getElementById('s-irs').value='$'+irs.toFixed(2);
+  document.getElementById('s-total-cost').value='$'+totalCost.toFixed(2);
+  document.getElementById('s-profit-display').value=(profit>=0?'+':'')+'$'+profit.toFixed(2);
+  document.getElementById('s-margin-display').value=margin.toFixed(1)+'%';
+}
+
+async function saveSale(){
+  if(!saleSrcItem)return;
+  const qty=parseInt(document.getElementById('s-qty').value)||1;
+  const price=parseFloat(document.getElementById('s-price').value)||0;
+  if(!price){alert('Enter a sale price');return;}
+  const shipCost=shipMode==='shipped'?(parseFloat(document.getElementById('s-ship-cost').value)||0):0;
+  const miles=parseFloat(document.getElementById('s-miles').value)||0;
+  const saleDate=document.getElementById('s-sale-date').value;
+  let daysToSell=null;
+  if(saleSrcItem.purchase_date&&saleDate){
+    const ms=new Date(saleDate)-new Date(saleSrcItem.purchase_date);
+    daysToSell=Math.max(0,Math.round(ms/(1000*60*60*24)));
+  }
+  const itemCost=(saleSrcItem.avg_cost||0)*qty;
+  const totalCost=itemCost+shipCost;
+  const whereBought=(saleSrcItem.sources||[]).map(s=>s.where).filter(Boolean).join(', ')||'—';
+  const payload={
+    user_id:user.id,
+    inv_item_id:saleSrcItem.id,
+    item_name:saleSrcItem.name,
+    category:saleSrcItem.category,
+    qty_sold:qty,
+    sale_date:saleDate||null,
+    days_to_sell:daysToSell,
+    where_bought:whereBought,
+    platform:document.getElementById('s-platform').value,
+    shipped:shipMode==='shipped',
+    carrier:shipMode==='shipped'?document.getElementById('s-carrier').value:null,
+    shipping_cost:shipCost,
+    sale_price:price,
+    avg_cost:saleSrcItem.avg_cost||0,
+    total_cost:totalCost,
+    miles:miles,
+  };
+  const btn=document.querySelector('#sale-modal .btn-save');
+  btn.textContent='Saving…';btn.disabled=true;
+  const {error}=await sb.from('sales').insert(payload);
+  if(error){alert('Error: '+error.message);btn.textContent='Record Sale';btn.disabled=false;return;}
+  const newQty=(saleSrcItem.qty||1)-qty;
+  const newStatus=newQty<=0?'sold':saleSrcItem.status;
+  await sb.from('items').update({qty:Math.max(0,newQty),status:newStatus}).eq('id',saleSrcItem.id);
+  btn.textContent='Record Sale';btn.disabled=false;
+  closeSaleModal();
+  await loadAll();
+}
+
+async function deleteSale(id){
+  if(!confirm('Delete this sale record?'))return;
+  await sb.from('sales').delete().eq('id',id);
+  await loadAll();
+}
+
+function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
