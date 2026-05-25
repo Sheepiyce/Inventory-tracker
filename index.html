@@ -310,6 +310,7 @@ tr:hover td{background:var(--accent-bg);}
           <span class="search-icon">🔍</span>
           <input type="text" id="sales-search" placeholder="Search sales…" oninput="renderSalesTable()"/>
         </div>
+        <button class="btn primary" onclick="openDirectSaleModal()">+ Add Sale</button>
       </div>
       <div class="table-container">
         <table>
@@ -936,6 +937,197 @@ async function deleteSale(id){
   await sb.from('sales').delete().eq('id',id);await loadAll();
 }
 function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// DIRECT SALE MODAL
+let dsShipMode='local';
+function openDirectSaleModal(){
+  dsShipMode='local';
+  document.getElementById('ds-ship-section').style.display='none';
+  document.getElementById('ds-ship-local').classList.add('active');
+  document.getElementById('ds-ship-shipped').classList.remove('active');
+  ['ds-name','ds-buy-price','ds-sale-price','ds-miles','ds-ship-cost','ds-profit-out','ds-margin-out','ds-total-cost-out'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ds-category').value='pokemon';
+  document.getElementById('ds-platform').value='Facebook Marketplace';
+  document.getElementById('ds-sale-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ds-qty').value=1;
+  document.getElementById('ds-modal').style.display='flex';
+}
+function closeDirectSaleModal(){document.getElementById('ds-modal').style.display='none';}
+function setDsShipMode(m){
+  dsShipMode=m;
+  document.getElementById('ds-ship-local').classList.toggle('active',m==='local');
+  document.getElementById('ds-ship-shipped').classList.toggle('active',m==='shipped');
+  document.getElementById('ds-ship-section').style.display=m==='shipped'?'block':'none';
+  calcDsProfit();
+}
+function calcDsProfit(){
+  const qty=parseInt(document.getElementById('ds-qty').value)||1;
+  const buy=parseFloat(document.getElementById('ds-buy-price').value)||0;
+  const sell=parseFloat(document.getElementById('ds-sale-price').value)||0;
+  const ship=dsShipMode==='shipped'?(parseFloat(document.getElementById('ds-ship-cost').value)||0):0;
+  const miles=parseFloat(document.getElementById('ds-miles').value)||0;
+  const totalCost=buy*qty+ship;
+  const revenue=sell*qty;
+  const profit=revenue-totalCost;
+  const margin=revenue>0?(profit/revenue)*100:0;
+  document.getElementById('ds-total-cost-out').value='$'+totalCost.toFixed(2);
+  document.getElementById('ds-profit-out').value=(profit>=0?'+':'')+'$'+profit.toFixed(2);
+  document.getElementById('ds-margin-out').value=margin.toFixed(1)+'%';
+}
+async function saveDirectSale(){
+  const name=document.getElementById('ds-name').value.trim();
+  const sell=parseFloat(document.getElementById('ds-sale-price').value)||0;
+  if(!name){alert('Enter item name');return;}
+  if(!sell){alert('Enter a sale price');return;}
+  const qty=parseInt(document.getElementById('ds-qty').value)||1;
+  const buy=parseFloat(document.getElementById('ds-buy-price').value)||0;
+  const ship=dsShipMode==='shipped'?(parseFloat(document.getElementById('ds-ship-cost').value)||0):0;
+  const miles=parseFloat(document.getElementById('ds-miles').value)||0;
+  const saleDate=document.getElementById('ds-sale-date').value;
+  const totalCost=buy*qty+ship;
+  const payload={
+    user_id:user.id,
+    inv_item_id:null,
+    item_name:name,
+    category:document.getElementById('ds-category').value,
+    qty_sold:qty,
+    sale_date:saleDate||null,
+    days_to_sell:null,
+    where_bought:document.getElementById('ds-where-bought').value.trim()||'—',
+    platform:document.getElementById('ds-platform').value,
+    shipped:dsShipMode==='shipped',
+    carrier:dsShipMode==='shipped'?document.getElementById('ds-carrier').value:null,
+    shipping_cost:ship,
+    sale_price:sell,
+    avg_cost:buy,
+    total_cost:totalCost,
+    miles,
+  };
+  const btn=document.querySelector('#ds-modal .btn-save');btn.textContent='Saving…';btn.disabled=true;
+  const {error}=await sb.from('sales').insert(payload);
+  btn.textContent='Save Sale';btn.disabled=false;
+  if(error){alert('Error: '+error.message);return;}
+  closeDirectSaleModal();await loadAll();
+}
 </script>
+
+<!-- DIRECT SALE MODAL -->
+<div id="ds-modal" style="display:none;" class="modal-bg" onclick="if(event.target===this)closeDirectSaleModal()">
+<div class="modal">
+  <div class="modal-hdr">
+    <h2>Add Sale</h2>
+    <button class="close-btn" onclick="closeDirectSaleModal()">✕</button>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Item Details</div>
+    <div class="form-grid">
+      <div class="fg2 full">
+        <label>Item Name</label>
+        <input type="text" id="ds-name" placeholder="e.g. Chaos Rising Booster Box"/>
+      </div>
+      <div class="fg2">
+        <label>Category</label>
+        <select id="ds-category">
+          <option value="pokemon">⚡ Pokémon</option>
+          <option value="sneakers">👟 Sneakers</option>
+          <option value="misc">📦 Misc</option>
+        </select>
+      </div>
+      <div class="fg2">
+        <label>Qty Sold</label>
+        <input type="number" id="ds-qty" value="1" min="1" oninput="calcDsProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Where Bought</label>
+        <input type="text" id="ds-where-bought" placeholder="e.g. Walmart, Best Buy"/>
+      </div>
+      <div class="fg2">
+        <label>Sale Date</label>
+        <input type="date" id="ds-sale-date"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Pricing</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>What You Paid ($)</label>
+        <input type="number" id="ds-buy-price" placeholder="0.00" min="0" step="0.01" oninput="calcDsProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Sale Price ($)</label>
+        <input type="number" id="ds-sale-price" placeholder="0.00" min="0" step="0.01" oninput="calcDsProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Sold On</label>
+        <select id="ds-platform">
+          <option value="Facebook Marketplace">Facebook Marketplace</option>
+          <option value="StockX">StockX</option>
+          <option value="Local / Cash">Local / Cash</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Shipping</div>
+    <div class="toggle-row" style="margin-bottom:10px;">
+      <button class="toggle-btn active" id="ds-ship-local" onclick="setDsShipMode('local')">Local</button>
+      <button class="toggle-btn" id="ds-ship-shipped" onclick="setDsShipMode('shipped')">Shipped</button>
+    </div>
+    <div class="ship-section" id="ds-ship-section">
+      <div class="form-grid">
+        <div class="fg2">
+          <label>Carrier</label>
+          <select id="ds-carrier">
+            <option>USPS</option><option>UPS</option><option>FedEx</option><option>Other</option>
+          </select>
+        </div>
+        <div class="fg2">
+          <label>Shipping Cost ($)</label>
+          <input type="number" id="ds-ship-cost" placeholder="0.00" min="0" step="0.01" oninput="calcDsProfit()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Mileage</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Miles Driven</label>
+        <input type="number" id="ds-miles" placeholder="0" min="0" step="0.1" oninput="calcDsProfit()"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-section">
+    <div class="modal-section-label">Summary</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Total Cost</label>
+        <input type="text" id="ds-total-cost-out" readonly style="color:var(--muted);"/>
+      </div>
+      <div class="fg2">
+        <label>Profit</label>
+        <input type="text" id="ds-profit-out" readonly style="color:var(--green);font-weight:600;"/>
+      </div>
+      <div class="fg2">
+        <label>Margin</label>
+        <input type="text" id="ds-margin-out" readonly style="color:var(--green);font-weight:600;"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn-cancel" onclick="closeDirectSaleModal()">Cancel</button>
+    <button class="btn-save" onclick="saveDirectSale()">Save Sale</button>
+  </div>
+</div>
+</div>
+
 </body>
 </html>
