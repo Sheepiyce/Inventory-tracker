@@ -305,6 +305,21 @@ tr:hover td{background:var(--accent-bg);}
           <div class="sales-stat-val green" id="d-margin">0%</div>
         </div>
       </div>
+
+      <!-- PROFIT GOAL -->
+      <div id="goal-bar-wrap" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px;">Monthly Profit Goal</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="goal-label" style="font-size:12px;color:var(--muted);"></span>
+            <button onclick="openGoalModal()" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:11px;color:var(--muted);cursor:pointer;font-family:var(--font);">Set Goal</button>
+          </div>
+        </div>
+        <div style="background:var(--s2);border-radius:99px;height:10px;overflow:hidden;">
+          <div id="goal-bar" style="height:100%;border-radius:99px;background:var(--navy);transition:width 0.4s;width:0%;"></div>
+        </div>
+        <div id="goal-sub" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
+      </div>
       <div class="toolbar">
         <div class="search-wrap">
           <span class="search-icon">🔍</span>
@@ -542,6 +557,10 @@ tr:hover td{background:var(--accent-bg);}
         <label>Margin</label>
         <input type="text" id="s-margin-display" readonly style="color:var(--green);font-weight:600;"/>
       </div>
+      <div class="fg2 full">
+        <label>Notes (optional)</label>
+        <textarea id="s-notes" placeholder="e.g. Sold at card show, buyer paid cash…" style="width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font);resize:vertical;min-height:60px;"></textarea>
+      </div>
     </div>
   </div>
 
@@ -625,6 +644,7 @@ function renderInvTable(){
   const empty=document.getElementById('inv-empty');
   if(!rows.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
+  const today=new Date();
   tbody.innerHTML=rows.map(item=>{
     const avg=item.avg_cost||0;
     const listed=item.listed_price||0;
@@ -637,8 +657,16 @@ function renderInvTable(){
     const condBadge=item.category==='sneakers'&&item.condition?`<span style="font-size:10px;color:var(--muted);">${item.condition}</span>`:'';
     const statusBadge=`<span class="badge badge-${item.status}">${{hold:'Holding',listed:'Listed',sold:'Sold'}[item.status]||item.status}</span>`;
     const whereBought=(item.sources||[]).map(s=>s.where).filter(Boolean).join(', ')||'—';
+    // Sitting alert
+    let sittingAlert='';
+    if(item.purchase_date&&item.status!=='sold'){
+      const parts=item.purchase_date.split('-');
+      const pd=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+      const days=Math.floor((today-pd)/(1000*60*60*24));
+      if(days>=30){sittingAlert=`<span style="display:inline-block;margin-left:5px;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:600;background:#fff3cd;color:#b45309;border:1px solid #fcd34d;" title="${days} days in inventory">⚠️ ${days}d</span>`;}
+    }
     return `<tr>
-      <td><div class="iname">${esc(item.name)}</div><div class="isub">${typeBadge}${condBadge}</div></td>
+      <td><div class="iname">${esc(item.name)}${sittingAlert}</div><div class="isub">${typeBadge}${condBadge}</div></td>
       <td><span class="badge ${catBadge}">${item.category}</span></td>
       <td>${item.qty||1}</td>
       <td style="font-size:11px;color:var(--muted);">${esc(whereBought)}</td>
@@ -807,11 +835,14 @@ function updateMarketLink(){
 
 // SALES DASH
 function getPeriodDates(){
-  const now=new Date();const start=new Date();
-  if(salesPeriod==='today'){start.setHours(0,0,0,0);}
-  else if(salesPeriod==='week'){start.setDate(now.getDate()-now.getDay());start.setHours(0,0,0,0);}
-  else if(salesPeriod==='month'){start.setDate(1);start.setHours(0,0,0,0);}
-  else if(salesPeriod==='year'){start.setMonth(0,1);start.setHours(0,0,0,0);}
+  const now=new Date();
+  const todayStr=now.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+  const nowY=now.getFullYear(),nowM=now.getMonth(),nowD=now.getDate();
+  if(salesPeriod==='today'){return{todayOnly:true,todayStr};}
+  const start=new Date(nowY,nowM,nowD,0,0,0,0);
+  if(salesPeriod==='week'){start.setDate(nowD-now.getDay());}
+  else if(salesPeriod==='month'){start.setDate(1);}
+  else if(salesPeriod==='year'){start.setMonth(0,1);}
   else{return null;}
   return{start,end:new Date()};
 }
@@ -822,10 +853,50 @@ function getSalesFiltered(){
     const catMatch=salesTab==='all'||s.category===salesTab;
     const qMatch=!q||s.item_name.toLowerCase().includes(q);
     let dateMatch=true;
-    if(range&&s.sale_date){const d=new Date(s.sale_date);dateMatch=d>=range.start&&d<=range.end;}
+    if(range&&s.sale_date){
+      if(range.todayOnly){
+        // Compare date strings directly to avoid timezone issues
+        dateMatch=s.sale_date===range.todayStr;
+      } else {
+        // Parse date string as local date, not UTC
+        const parts=s.sale_date.split('-');
+        const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+        dateMatch=d>=range.start&&d<=range.end;
+      }
+    }
     return catMatch&&qMatch&&dateMatch;
   });
 }
+// GOAL TRACKER
+let monthlyGoal=parseFloat(localStorage.getItem('monthly_goal'))||0;
+function openGoalModal(){
+  const g=prompt('Set your monthly profit goal ($):',monthlyGoal||'');
+  if(g===null)return;
+  const val=parseFloat(g)||0;
+  monthlyGoal=val;
+  localStorage.setItem('monthly_goal',val);
+  renderDash();
+}
+function renderGoalBar(currentMonthProfit){
+  const wrap=document.getElementById('goal-bar-wrap');
+  const bar=document.getElementById('goal-bar');
+  const label=document.getElementById('goal-label');
+  const sub=document.getElementById('goal-sub');
+  if(!monthlyGoal){
+    label.textContent='No goal set';
+    bar.style.width='0%';
+    bar.style.background='var(--navy)';
+    sub.textContent='Click "Set Goal" to track your monthly progress';
+    return;
+  }
+  const pct=Math.min((currentMonthProfit/monthlyGoal)*100,100);
+  const remaining=monthlyGoal-currentMonthProfit;
+  bar.style.width=pct+'%';
+  bar.style.background=pct>=100?'var(--green)':pct>=60?'var(--navy)':'#f59e0b';
+  label.textContent=`$${currentMonthProfit.toFixed(0)} / $${monthlyGoal.toFixed(0)}`;
+  sub.textContent=pct>=100?`🎉 Goal reached! You're $${(currentMonthProfit-monthlyGoal).toFixed(0)} over!`:`$${remaining.toFixed(0)} to go · ${pct.toFixed(0)}% complete`;
+}
+
 function renderDash(){
   const rows=getSalesFiltered();
   const rev=rows.reduce((s,r)=>s+(r.sale_price*r.qty_sold),0);
@@ -840,6 +911,23 @@ function renderDash(){
   pe.className='sales-stat-val '+(profit>=0?'green':'');
   if(profit<0)pe.style.color='var(--red)';else pe.style.color='';
   document.getElementById('d-margin').textContent=margin.toFixed(1)+'%';
+  // Goal bar always uses current month profit
+  const now=new Date();
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const monthProfit=salesItems.reduce((s,r)=>{
+    if(!r.sale_date)return s;
+    const parts=r.sale_date.split('-');
+    const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    if(d>=monthStart){return s+(r.sale_price*r.qty_sold)-(r.total_cost||0);}
+    return s;
+  },0);
+  renderGoalBar(monthProfit);
+}
+let collapsedMonths={};
+function getMonthKey(dateStr){
+  if(!dateStr)return'Unknown';
+  const d=new Date(dateStr);
+  return d.toLocaleString('default',{month:'long',year:'numeric'});
 }
 function renderSalesTable(){
   const rows=getSalesFiltered();
@@ -847,29 +935,161 @@ function renderSalesTable(){
   const empty=document.getElementById('sales-empty');
   if(!rows.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  tbody.innerHTML=rows.map(s=>{
-    const profit=s.sale_price*s.qty_sold-(s.total_cost||0);
-    const margin=s.sale_price>0?(profit/(s.sale_price*s.qty_sold)*100):0;
-    const irs=(s.miles||0)*IRS_RATE;
-    const catBadge={sneakers:'badge-sneakers',pokemon:'badge-pokemon',misc:'badge-misc'}[s.category]||'';
-    return `<tr>
-      <td><div class="iname">${esc(s.item_name)}</div></td>
-      <td><span class="badge ${catBadge}">${s.category}</span></td>
-      <td>${s.qty_sold}</td>
-      <td style="font-size:11px;">${s.sale_date||'—'}</td>
-      <td style="text-align:center;color:var(--muted);">${s.days_to_sell!==null&&s.days_to_sell!==undefined?s.days_to_sell+'d':'—'}</td>
-      <td style="font-size:11px;color:var(--muted2);">${esc(s.where_bought||'—')}</td>
-      <td style="font-size:11px;">${esc(s.platform||'—')}</td>
-      <td style="font-size:11px;color:var(--muted2);">${s.shipped?`${s.carrier||''} · $${(s.shipping_cost||0).toFixed(2)}`:'Local'}</td>
-      <td style="font-weight:600;">$${(s.sale_price*s.qty_sold).toFixed(2)}</td>
-      <td style="color:var(--muted);">$${(s.total_cost||0).toFixed(2)}</td>
-      <td><span class="${profit>=0?'pos':'neg'}">${profit>=0?'+':''}$${profit.toFixed(2)}</span></td>
-      <td><span class="${margin>=0?'pos':'neg'}">${margin.toFixed(1)}%</span></td>
-      <td style="color:var(--muted2);">${s.miles||0}</td>
-      <td style="color:var(--navy);font-weight:600;">$${irs.toFixed(2)}</td>
-      <td><button class="icon-btn del-btn" onclick="deleteSale('${s.id}')">🗑️</button></td>
+
+  // Group by month
+  const groups={};
+  rows.forEach(s=>{
+    const key=getMonthKey(s.sale_date);
+    if(!groups[key])groups[key]=[];
+    groups[key].push(s);
+  });
+
+  // Sort months newest first
+  const now=new Date();
+  const currentKey=now.toLocaleString('default',{month:'long',year:'numeric'});
+  const sortedKeys=Object.keys(groups).sort((a,b)=>{
+    const da=new Date(a);const db=new Date(b);return db-da;
+  });
+
+  // Auto-expand current month, collapse others by default (first time)
+  sortedKeys.forEach(key=>{
+    if(!(key in collapsedMonths)){
+      collapsedMonths[key]=key!==currentKey;
+    }
+  });
+
+  const catBadge={sneakers:'badge-sneakers',pokemon:'badge-pokemon',misc:'badge-misc'};
+  let html='';
+  sortedKeys.forEach(key=>{
+    const monthRows=groups[key];
+    const isCollapsed=collapsedMonths[key];
+    const monthRev=monthRows.reduce((s,r)=>s+(r.sale_price*r.qty_sold),0);
+    const monthProfit=monthRows.reduce((s,r)=>s+(r.sale_price*r.qty_sold)-(r.total_cost||0),0);
+    const isCurrentMonth=key===currentKey;
+
+    // Month header row
+    html+=`<tr style="background:${isCurrentMonth?'var(--accent-bg)':'var(--s2)'};cursor:pointer;" onclick="toggleMonth('${key}')">
+      <td colspan="15" style="padding:10px 14px;font-weight:700;color:var(--navy);font-size:13px;border-bottom:2px solid var(--border2);">
+        <span style="margin-right:8px;">${isCollapsed?'▶':'▼'}</span>
+        ${key}${isCurrentMonth?' <span style="font-size:10px;font-weight:500;color:var(--navy3);background:var(--border2);padding:2px 8px;border-radius:99px;margin-left:6px;">Current</span>':''}
+        <span style="float:right;font-size:11px;font-weight:500;color:var(--muted);margin-right:8px;">
+          ${monthRows.length} sale${monthRows.length!==1?'s':''} &nbsp;·&nbsp; Rev: $${monthRev.toFixed(0)} &nbsp;·&nbsp; Profit: <span class="${monthProfit>=0?'pos':'neg'}">${monthProfit>=0?'+':''}$${monthProfit.toFixed(0)}</span>
+        </span>
+      </td>
     </tr>`;
-  }).join('');
+
+    if(!isCollapsed){
+      monthRows.forEach(s=>{
+        const profit=s.sale_price*s.qty_sold-(s.total_cost||0);
+        const margin=s.sale_price>0?(profit/(s.sale_price*s.qty_sold)*100):0;
+        const irs=(s.miles||0)*IRS_RATE;
+        const badge=catBadge[s.category]||'';
+        html+=`<tr>
+          <td><div class="iname">${esc(s.item_name)}</div>${s.notes?`<div class="isub" style="color:var(--muted);font-style:italic;">📝 ${esc(s.notes)}</div>`:''}</td>
+          <td><span class="badge ${badge}">${s.category}</span></td>
+          <td>${s.qty_sold}</td>
+          <td style="font-size:11px;">${s.sale_date||'—'}</td>
+          <td style="text-align:center;color:var(--muted);">${s.days_to_sell!=null?s.days_to_sell+'d':'—'}</td>
+          <td style="font-size:11px;color:var(--muted2);">${esc(s.where_bought||'—')}</td>
+          <td style="font-size:11px;">${esc(s.platform||'—')}</td>
+          <td style="font-size:11px;color:var(--muted2);">${s.shipped?`${s.carrier||''} · $${(s.shipping_cost||0).toFixed(2)}`:'Local'}</td>
+          <td style="font-weight:600;">$${(s.sale_price*s.qty_sold).toFixed(2)}</td>
+          <td style="color:var(--muted);">$${(s.total_cost||0).toFixed(2)}</td>
+          <td><span class="${profit>=0?'pos':'neg'}">${profit>=0?'+':''}$${profit.toFixed(2)}</span></td>
+          <td><span class="${margin>=0?'pos':'neg'}">${margin.toFixed(1)}%</span></td>
+          <td style="color:var(--muted2);">${s.miles||0}</td>
+          <td style="color:var(--navy);font-weight:600;">$${irs.toFixed(2)}</td>
+          <td><div class="row-actions">
+            <button class="icon-btn" onclick="openEditSaleModal('${s.id}')">✏️</button>
+            <button class="icon-btn del-btn" onclick="deleteSale('${s.id}')">🗑️</button>
+          </div></td>
+        </tr>`;
+      });
+    }
+  });
+  tbody.innerHTML=html;
+}
+function toggleMonth(key){
+  collapsedMonths[key]=!collapsedMonths[key];
+  renderSalesTable();
+}
+
+// EDIT SALE MODAL
+let editingSaleId=null;
+function openEditSaleModal(id){
+  const s=salesItems.find(x=>x.id===id);if(!s)return;
+  editingSaleId=id;
+  document.getElementById('es-name').value=s.item_name||'';
+  document.getElementById('es-category').value=s.category||'pokemon';
+  document.getElementById('es-qty').value=s.qty_sold||1;
+  document.getElementById('es-sale-date').value=s.sale_date||'';
+  document.getElementById('es-where-bought').value=s.where_bought||'';
+  document.getElementById('es-platform').value=s.platform||'Facebook Marketplace';
+  document.getElementById('es-buy-price').value=s.avg_cost||'';
+  document.getElementById('es-sale-price').value=s.sale_price||'';
+  document.getElementById('es-miles').value=s.miles||'';
+  const shipped=s.shipped||false;
+  document.getElementById('es-notes').value=s.notes||'';
+  esShipMode=shipped?'shipped':'local';
+  document.getElementById('es-ship-local').classList.toggle('active',!shipped);
+  document.getElementById('es-ship-shipped').classList.toggle('active',shipped);
+  document.getElementById('es-ship-section').style.display=shipped?'block':'none';
+  if(shipped){document.getElementById('es-carrier').value=s.carrier||'USPS';document.getElementById('es-ship-cost').value=s.shipping_cost||'';}
+  calcEsProfit();
+  document.getElementById('es-modal').style.display='flex';
+}
+function closeEditSaleModal(){document.getElementById('es-modal').style.display='none';editingSaleId=null;}
+let esShipMode='local';
+function setEsShipMode(m){
+  esShipMode=m;
+  document.getElementById('es-ship-local').classList.toggle('active',m==='local');
+  document.getElementById('es-ship-shipped').classList.toggle('active',m==='shipped');
+  document.getElementById('es-ship-section').style.display=m==='shipped'?'block':'none';
+  calcEsProfit();
+}
+function calcEsProfit(){
+  const qty=parseInt(document.getElementById('es-qty').value)||1;
+  const buy=parseFloat(document.getElementById('es-buy-price').value)||0;
+  const sell=parseFloat(document.getElementById('es-sale-price').value)||0;
+  const ship=esShipMode==='shipped'?(parseFloat(document.getElementById('es-ship-cost').value)||0):0;
+  const totalCost=buy*qty+ship;
+  const revenue=sell*qty;
+  const profit=revenue-totalCost;
+  const margin=revenue>0?(profit/revenue)*100:0;
+  document.getElementById('es-total-cost-out').value='$'+totalCost.toFixed(2);
+  document.getElementById('es-profit-out').value=(profit>=0?'+':'')+'$'+profit.toFixed(2);
+  document.getElementById('es-margin-out').value=margin.toFixed(1)+'%';
+}
+async function saveEditSale(){
+  if(!editingSaleId)return;
+  const qty=parseInt(document.getElementById('es-qty').value)||1;
+  const sell=parseFloat(document.getElementById('es-sale-price').value)||0;
+  if(!sell){alert('Enter a sale price');return;}
+  const buy=parseFloat(document.getElementById('es-buy-price').value)||0;
+  const ship=esShipMode==='shipped'?(parseFloat(document.getElementById('es-ship-cost').value)||0):0;
+  const miles=parseFloat(document.getElementById('es-miles').value)||0;
+  const totalCost=buy*qty+ship;
+  const payload={
+    item_name:document.getElementById('es-name').value.trim(),
+    category:document.getElementById('es-category').value,
+    qty_sold:qty,
+    sale_date:document.getElementById('es-sale-date').value||null,
+    where_bought:document.getElementById('es-where-bought').value.trim()||'—',
+    platform:document.getElementById('es-platform').value,
+    shipped:esShipMode==='shipped',
+    carrier:esShipMode==='shipped'?document.getElementById('es-carrier').value:null,
+    shipping_cost:ship,
+    sale_price:sell,
+    avg_cost:buy,
+    total_cost:totalCost,
+    miles,
+    notes:document.getElementById('es-notes').value.trim()||null,
+  };
+  const btn=document.querySelector('#es-modal .btn-save');btn.textContent='Saving…';btn.disabled=true;
+  const {error}=await sb.from('sales').update(payload).eq('id',editingSaleId);
+  btn.textContent='Save Changes';btn.disabled=false;
+  if(error){alert('Error: '+error.message);return;}
+  closeEditSaleModal();await loadAll();
 }
 
 // SALE MODAL
@@ -884,6 +1104,7 @@ function openSaleModal(invId){
   document.getElementById('s-qty').max=item.qty||1;
   document.getElementById('s-sale-date').value=new Date().toISOString().split('T')[0];
   ['s-price','s-miles','s-ship-cost','s-irs','s-total-cost','s-profit-display','s-margin-display'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-notes').value='';
   document.getElementById('sale-modal').style.display='flex';
 }
 function closeSaleModal(){document.getElementById('sale-modal').style.display='none';saleSrcItem=null;}
@@ -923,7 +1144,7 @@ async function saveSale(){
   if(saleSrcItem.purchase_date&&saleDate){const ms=new Date(saleDate)-new Date(saleSrcItem.purchase_date);daysToSell=Math.max(0,Math.round(ms/(1000*60*60*24)));}
   const totalCost=(saleSrcItem.avg_cost||0)*qty+shipCost;
   const whereBought=(saleSrcItem.sources||[]).map(s=>s.where).filter(Boolean).join(', ')||'—';
-  const payload={user_id:user.id,inv_item_id:saleSrcItem.id,item_name:saleSrcItem.name,category:saleSrcItem.category,qty_sold:qty,sale_date:saleDate||null,days_to_sell:daysToSell,where_bought:whereBought,platform:document.getElementById('s-platform').value,shipped:shipMode==='shipped',carrier:shipMode==='shipped'?document.getElementById('s-carrier').value:null,shipping_cost:shipCost,sale_price:price,avg_cost:saleSrcItem.avg_cost||0,total_cost:totalCost,miles};
+  const payload={user_id:user.id,inv_item_id:saleSrcItem.id,item_name:saleSrcItem.name,category:saleSrcItem.category,qty_sold:qty,sale_date:saleDate||null,days_to_sell:daysToSell,where_bought:whereBought,platform:document.getElementById('s-platform').value,shipped:shipMode==='shipped',carrier:shipMode==='shipped'?document.getElementById('s-carrier').value:null,shipping_cost:shipCost,sale_price:price,avg_cost:saleSrcItem.avg_cost||0,total_cost:totalCost,miles,notes:document.getElementById('s-notes').value.trim()||null};
   const btn=document.querySelector('#sale-modal .btn-save');btn.textContent='Saving…';btn.disabled=true;
   const {error}=await sb.from('sales').insert(payload);
   if(error){alert('Error: '+error.message);btn.textContent='Record Sale';btn.disabled=false;return;}
@@ -1002,6 +1223,7 @@ async function saveDirectSale(){
     avg_cost:buy,
     total_cost:totalCost,
     miles,
+    notes:document.getElementById('ds-notes').value.trim()||null,
   };
   const btn=document.querySelector('#ds-modal .btn-save');btn.textContent='Saving…';btn.disabled=true;
   const {error}=await sb.from('sales').insert(payload);
@@ -1010,6 +1232,115 @@ async function saveDirectSale(){
   closeDirectSaleModal();await loadAll();
 }
 </script>
+
+<!-- EDIT SALE MODAL -->
+<div id="es-modal" style="display:none;" class="modal-bg" onclick="if(event.target===this)closeEditSaleModal()">
+<div class="modal">
+  <div class="modal-hdr">
+    <h2>Edit Sale</h2>
+    <button class="close-btn" onclick="closeEditSaleModal()">✕</button>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-label">Item Details</div>
+    <div class="form-grid">
+      <div class="fg2 full">
+        <label>Item Name</label>
+        <input type="text" id="es-name" placeholder="Item name"/>
+      </div>
+      <div class="fg2">
+        <label>Category</label>
+        <select id="es-category">
+          <option value="pokemon">⚡ Pokémon</option>
+          <option value="sneakers">👟 Sneakers</option>
+          <option value="misc">📦 Misc</option>
+        </select>
+      </div>
+      <div class="fg2">
+        <label>Qty Sold</label>
+        <input type="number" id="es-qty" value="1" min="1" oninput="calcEsProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Where Bought</label>
+        <input type="text" id="es-where-bought" placeholder="e.g. Walmart"/>
+      </div>
+      <div class="fg2">
+        <label>Sale Date</label>
+        <input type="date" id="es-sale-date"/>
+      </div>
+      <div class="fg2">
+        <label>Sold On</label>
+        <select id="es-platform">
+          <option value="Facebook Marketplace">Facebook Marketplace</option>
+          <option value="StockX">StockX</option>
+          <option value="Local / Cash">Local / Cash</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-label">Pricing</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>What You Paid ($)</label>
+        <input type="number" id="es-buy-price" placeholder="0.00" min="0" step="0.01" oninput="calcEsProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Sale Price ($)</label>
+        <input type="number" id="es-sale-price" placeholder="0.00" min="0" step="0.01" oninput="calcEsProfit()"/>
+      </div>
+      <div class="fg2">
+        <label>Miles Driven</label>
+        <input type="number" id="es-miles" placeholder="0" min="0" step="0.1" oninput="calcEsProfit()"/>
+      </div>
+    </div>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-label">Shipping</div>
+    <div class="toggle-row" style="margin-bottom:10px;">
+      <button class="toggle-btn active" id="es-ship-local" onclick="setEsShipMode('local')">Local</button>
+      <button class="toggle-btn" id="es-ship-shipped" onclick="setEsShipMode('shipped')">Shipped</button>
+    </div>
+    <div class="ship-section" id="es-ship-section">
+      <div class="form-grid">
+        <div class="fg2">
+          <label>Carrier</label>
+          <select id="es-carrier"><option>USPS</option><option>UPS</option><option>FedEx</option><option>Other</option></select>
+        </div>
+        <div class="fg2">
+          <label>Shipping Cost ($)</label>
+          <input type="number" id="es-ship-cost" placeholder="0.00" min="0" step="0.01" oninput="calcEsProfit()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-label">Summary</div>
+    <div class="form-grid">
+      <div class="fg2">
+        <label>Total Cost</label>
+        <input type="text" id="es-total-cost-out" readonly style="color:var(--muted);"/>
+      </div>
+      <div class="fg2">
+        <label>Profit</label>
+        <input type="text" id="es-profit-out" readonly style="color:var(--green);font-weight:600;"/>
+      </div>
+      <div class="fg2">
+        <label>Margin</label>
+        <input type="text" id="es-margin-out" readonly style="color:var(--green);font-weight:600;"/>
+      </div>
+      <div class="fg2 full">
+        <label>Notes (optional)</label>
+        <textarea id="es-notes" placeholder="e.g. Sold at card show…" style="width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font);resize:vertical;min-height:60px;"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-cancel" onclick="closeEditSaleModal()">Cancel</button>
+    <button class="btn-save" onclick="saveEditSale()">Save Changes</button>
+  </div>
+</div>
+</div>
 
 <!-- DIRECT SALE MODAL -->
 <div id="ds-modal" style="display:none;" class="modal-bg" onclick="if(event.target===this)closeDirectSaleModal()">
@@ -1118,6 +1449,13 @@ async function saveDirectSale(){
       <div class="fg2">
         <label>Margin</label>
         <input type="text" id="ds-margin-out" readonly style="color:var(--green);font-weight:600;"/>
+      </div>
+    </div>
+  </div>
+
+      <div class="fg2 full">
+        <label>Notes (optional)</label>
+        <textarea id="ds-notes" placeholder="e.g. Sold at card show, buyer paid cash…" style="width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font);resize:vertical;min-height:60px;"></textarea>
       </div>
     </div>
   </div>
