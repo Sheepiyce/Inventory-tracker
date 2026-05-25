@@ -172,6 +172,54 @@ tr:hover td{background:var(--accent-bg);}
 .market-link:hover{color:var(--navy);}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--navy);border-radius:50%;animation:spin 0.6s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+
+/* MOBILE CARD VIEW */
+.card-list{display:none;flex-direction:column;gap:8px;}
+.inv-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.inv-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+.inv-card-name{font-weight:700;font-size:13px;color:var(--navy);flex:1;margin-right:8px;}
+.inv-card-badges{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;}
+.inv-card-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);color:var(--text);}
+.inv-card-row:last-of-type{border-bottom:none;}
+.inv-card-label{color:var(--muted);font-size:11px;}
+.inv-card-actions{display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+.inv-card-actions button{flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font);font-weight:500;}
+.inv-card-actions .sell-btn{color:var(--green);border-color:var(--green-bg);background:var(--green-bg);}
+.inv-card-actions .del-btn{color:var(--red);border-color:var(--red-bg);background:var(--red-bg);}
+
+.sale-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:0;}
+.sale-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
+.sale-card-name{font-weight:700;font-size:13px;color:var(--navy);flex:1;}
+.sale-card-profit{font-size:15px;font-weight:800;}
+.sale-card-meta{font-size:11px;color:var(--muted);margin-bottom:8px;}
+.sale-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;margin-bottom:8px;}
+.sale-card-grid-label{color:var(--muted);}
+.sale-card-grid-val{color:var(--text);font-weight:500;text-align:right;}
+.sale-card-actions{display:flex;gap:6px;}
+.sale-card-actions button{flex:1;padding:7px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font);}
+.sale-card-actions .del-btn{color:var(--red);border-color:var(--red-bg);background:var(--red-bg);}
+
+.month-header{background:var(--accent-bg);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 14px;cursor:pointer;margin-bottom:6px;}
+.month-header-top{display:flex;align-items:center;justify-content:space-between;}
+.month-header-title{font-weight:700;font-size:14px;color:var(--navy);display:flex;align-items:center;gap:8px;}
+.month-header-stats{font-size:11px;color:var(--muted);margin-top:3px;}
+
+@media(max-width:700px){
+  .content{padding:1rem;}
+  .sub-tab{padding:10px 12px;font-size:11px;}
+  .table-container{display:none;}
+  .card-list{display:flex;}
+  .topbar{padding:0 1rem;}
+  .main-tab{padding:0 14px;font-size:11px;}
+  .modal{padding:1.25rem;margin:0;border-radius:var(--radius-lg) var(--radius-lg) 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%;max-height:85vh;}
+  .modal-bg{align-items:flex-end;padding:0;}
+  .form-grid{grid-template-columns:1fr;}
+  .form-grid .full{grid-column:1;}
+  .source-row{grid-template-columns:1fr auto;}
+  .inv-stat-val{font-size:1.6rem;}
+  .period-tabs{gap:4px;}
+  .period-tab{padding:5px 10px;font-size:10px;}
+}
 </style>
 </head>
 <body>
@@ -266,6 +314,7 @@ tr:hover td{background:var(--accent-bg);}
           No items yet — add your first item above
         </div>
       </div>
+      <div class="card-list" id="inv-cards"></div>
     </div>
   </div>
 
@@ -357,6 +406,7 @@ tr:hover td{background:var(--accent-bg);}
           No sales yet — mark items as sold from inventory
         </div>
       </div>
+      <div class="card-list" id="sales-cards"></div>
     </div>
   </div>
 </div>
@@ -612,6 +662,7 @@ async function loadAll(){
   ]);
   invItems=inv||[];salesItems=sales||[];
   renderInvTable();renderSalesTable();renderDash();renderInvStats();
+  loadGoal();
 }
 
 // PAGES
@@ -631,6 +682,13 @@ function renderInvStats(){
   const items=src.reduce((s,i)=>s+(i.qty||1),0);
   document.getElementById('stat-capital').textContent='$'+capital.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   document.getElementById('stat-items').textContent=items;
+}
+
+function fmtDate(d){
+  if(!d)return'—';
+  const parts=d.split('-');
+  if(parts.length!==3)return d;
+  return`${parts[1]}/${parts[2]}/${parts[0].slice(2)}`;
 }
 
 // INV TABLE
@@ -669,8 +727,8 @@ function renderInvTable(){
       <td><div class="iname">${esc(item.name)}${sittingAlert}</div><div class="isub">${typeBadge}${condBadge}</div></td>
       <td><span class="badge ${catBadge}">${item.category}</span></td>
       <td>${item.qty||1}</td>
-      <td style="font-size:11px;color:var(--muted);">${esc(whereBought)}</td>
-      <td style="font-size:11px;color:var(--muted2);">${item.purchase_date||'—'}</td>
+      <td style="font-size:11px;color:var(--text);">${esc(whereBought)}</td>
+      <td style="font-size:11px;color:var(--muted2);">${fmtDate(item.purchase_date)}</td>
       <td style="font-weight:600;">$${avg.toFixed(2)}</td>
       <td>${item.market_price?'$'+Number(item.market_price).toFixed(2):'<span class="muted-val">—</span>'}</td>
       <td>${listed>0?'$'+listed.toFixed(2):'<span class="muted-val">—</span>'}</td>
@@ -683,6 +741,54 @@ function renderInvTable(){
         <button class="icon-btn del-btn" onclick="deleteInvItem('${item.id}')">🗑️</button>
       </div></td>
     </tr>`;
+  }).join('');
+  renderInvCards(rows);
+}
+
+function renderInvCards(rows){
+  const container=document.getElementById('inv-cards');
+  if(!rows||!rows.length){container.innerHTML='<div class="empty"><span class="empty-icon">📦</span>No items yet</div>';return;}
+  const today=new Date();
+  container.innerHTML=rows.map(item=>{
+    const avg=item.avg_cost||0;
+    const listed=item.listed_price||0;
+    const profit=listed>0?listed-avg:null;
+    const margin=listed>0&&avg>0?((profit/listed)*100):null;
+    const catBadge={sneakers:'badge-sneakers',pokemon:'badge-pokemon',misc:'badge-misc'}[item.category]||'';
+    const typeBadge=item.category==='pokemon'?(item.pokemon_type==='sealed'?'<span class="badge badge-sealed">Sealed</span>':'<span class="badge badge-cards">Cards</span>'):'';
+    const condBadge=item.category==='sneakers'&&item.condition?`<span class="badge" style="background:#f1f5f9;color:#475569;">${item.condition}</span>`:'';
+    const statusBadge=`<span class="badge badge-${item.status}">${{hold:'Holding',listed:'Listed',sold:'Sold'}[item.status]}</span>`;
+    const whereBought=(item.sources||[]).map(s=>s.where).filter(Boolean).join(', ')||'—';
+    let sittingAlert='';
+    if(item.purchase_date&&item.status!=='sold'){
+      const parts=item.purchase_date.split('-');
+      const pd=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+      const days=Math.floor((today-pd)/(1000*60*60*24));
+      if(days>=30)sittingAlert=`<span style="margin-left:6px;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:600;background:#fff3cd;color:#b45309;border:1px solid #fcd34d;">⚠️ ${days}d</span>`;
+    }
+    return `<div class="inv-card">
+      <div class="inv-card-top">
+        <div>
+          <div class="inv-card-name">${esc(item.name)}${sittingAlert}</div>
+          <div class="inv-card-badges">${typeBadge}${condBadge}<span class="badge ${catBadge}">${item.category}</span>${statusBadge}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--muted);">Qty</div>
+          <div style="font-size:18px;font-weight:800;color:var(--navy);">${item.qty||1}</div>
+        </div>
+      </div>
+      <div class="inv-card-row"><span class="inv-card-label">Where Bought</span><span>${esc(whereBought)}</span></div>
+      <div class="inv-card-row"><span class="inv-card-label">Purchase Date</span><span>${fmtDate(item.purchase_date)}</span></div>
+      <div class="inv-card-row"><span class="inv-card-label">Avg Cost</span><span style="font-weight:600;">$${avg.toFixed(2)}</span></div>
+      ${item.market_price?`<div class="inv-card-row"><span class="inv-card-label">Market Price</span><span>$${Number(item.market_price).toFixed(2)}</span></div>`:''}
+      <div class="inv-card-row"><span class="inv-card-label">Listed Price</span><span>${listed>0?'$'+listed.toFixed(2):'—'}</span></div>
+      ${profit!==null?`<div class="inv-card-row"><span class="inv-card-label">Proj. Profit</span><span class="${profit>=0?'pos':'neg'}">${profit>=0?'+':''}$${profit.toFixed(2)} · ${margin.toFixed(1)}%</span></div>`:''}
+      <div class="inv-card-actions">
+        <button onclick="editInvItem('${item.id}')">✏️ Edit</button>
+        <button class="sell-btn" onclick="openSaleModal('${item.id}')">💰 Sell</button>
+        <button class="del-btn" onclick="deleteInvItem('${item.id}')">🗑️</button>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -868,13 +974,18 @@ function getSalesFiltered(){
   });
 }
 // GOAL TRACKER
-let monthlyGoal=parseFloat(localStorage.getItem('monthly_goal'))||0;
-function openGoalModal(){
+let monthlyGoal=0;
+async function loadGoal(){
+  const {data}=await sb.from('user_settings').select('value').eq('user_id',user.id).eq('key','monthly_goal').single();
+  if(data){monthlyGoal=parseFloat(data.value)||0;}
+  renderDash();
+}
+async function openGoalModal(){
   const g=prompt('Set your monthly profit goal ($):',monthlyGoal||'');
   if(g===null)return;
   const val=parseFloat(g)||0;
   monthlyGoal=val;
-  localStorage.setItem('monthly_goal',val);
+  await sb.from('user_settings').upsert({user_id:user.id,key:'monthly_goal',value:String(val)},{onConflict:'user_id,key'});
   renderDash();
 }
 function renderGoalBar(currentMonthProfit){
@@ -988,9 +1099,9 @@ function renderSalesTable(){
           <td><div class="iname">${esc(s.item_name)}</div>${s.notes?`<div class="isub" style="color:var(--muted);font-style:italic;">📝 ${esc(s.notes)}</div>`:''}</td>
           <td><span class="badge ${badge}">${s.category}</span></td>
           <td>${s.qty_sold}</td>
-          <td style="font-size:11px;">${s.sale_date||'—'}</td>
+          <td style="font-size:11px;">${fmtDate(s.sale_date)}</td>
           <td style="text-align:center;color:var(--muted);">${s.days_to_sell!=null?s.days_to_sell+'d':'—'}</td>
-          <td style="font-size:11px;color:var(--muted2);">${esc(s.where_bought||'—')}</td>
+          <td style="font-size:11px;color:var(--text);">${esc(s.where_bought||'—')}</td>
           <td style="font-size:11px;">${esc(s.platform||'—')}</td>
           <td style="font-size:11px;color:var(--muted2);">${s.shipped?`${s.carrier||''} · $${(s.shipping_cost||0).toFixed(2)}`:'Local'}</td>
           <td style="font-weight:600;">$${(s.sale_price*s.qty_sold).toFixed(2)}</td>
@@ -1008,6 +1119,64 @@ function renderSalesTable(){
     }
   });
   tbody.innerHTML=html;
+  renderSalesCards(rows,groups,sortedKeys,currentKey);
+}
+
+function renderSalesCards(rows,groups,sortedKeys,currentKey){
+  const container=document.getElementById('sales-cards');
+  if(!rows||!rows.length){container.innerHTML='<div class="empty"><span class="empty-icon">💰</span>No sales yet</div>';return;}
+  const catBadge={sneakers:'badge-sneakers',pokemon:'badge-pokemon',misc:'badge-misc'};
+  let html='';
+  sortedKeys.forEach(key=>{
+    const monthRows=groups[key];
+    const isCollapsed=collapsedMonths[key];
+    const monthRev=monthRows.reduce((s,r)=>s+(r.sale_price*r.qty_sold),0);
+    const monthProfit=monthRows.reduce((s,r)=>s+(r.sale_price*r.qty_sold)-(r.total_cost||0),0);
+    const isCurrent=key===currentKey;
+    html+=`<div class="month-header" onclick="toggleMonth('${key}')">
+      <div class="month-header-top">
+        <div class="month-header-title">
+          <span>${isCollapsed?'▶':'▼'}</span>
+          ${key}
+          ${isCurrent?'<span style="font-size:10px;font-weight:500;color:var(--navy3);background:var(--border2);padding:2px 8px;border-radius:99px;">Current</span>':''}
+        </div>
+        <span class="${monthProfit>=0?'pos':'neg'}" style="font-size:13px;font-weight:700;">${monthProfit>=0?'+':''}$${monthProfit.toFixed(0)}</span>
+      </div>
+      <div class="month-header-stats">${monthRows.length} sale${monthRows.length!==1?'s':''} · Rev: $${monthRev.toFixed(0)}</div>
+    </div>`;
+    if(!isCollapsed){
+      monthRows.forEach(s=>{
+        const profit=s.sale_price*s.qty_sold-(s.total_cost||0);
+        const margin=s.sale_price>0?(profit/(s.sale_price*s.qty_sold)*100):0;
+        const irs=(s.miles||0)*IRS_RATE;
+        const badge=catBadge[s.category]||'';
+        html+=`<div class="sale-card">
+          <div class="sale-card-top">
+            <div>
+              <div class="sale-card-name">${esc(s.item_name)}</div>
+              <div class="sale-card-meta">${fmtDate(s.sale_date)} · <span class="badge ${badge}">${s.category}</span> · Qty: ${s.qty_sold}</div>
+            </div>
+            <div class="sale-card-profit ${profit>=0?'pos':'neg'}">${profit>=0?'+':''}$${profit.toFixed(2)}</div>
+          </div>
+          <div class="sale-card-grid">
+            <span class="sale-card-grid-label">Sale Price</span><span class="sale-card-grid-val" style="font-weight:700;">$${(s.sale_price*s.qty_sold).toFixed(2)}</span>
+            <span class="sale-card-grid-label">Margin</span><span class="sale-card-grid-val ${margin>=0?'pos':'neg'}">${margin.toFixed(1)}%</span>
+            <span class="sale-card-grid-label">Cost</span><span class="sale-card-grid-val">$${(s.total_cost||0).toFixed(2)}</span>
+            <span class="sale-card-grid-label">Sold On</span><span class="sale-card-grid-val">${esc(s.platform||'—')}</span>
+            <span class="sale-card-grid-label">Where Bought</span><span class="sale-card-grid-val">${esc(s.where_bought||'—')}</span>
+            <span class="sale-card-grid-label">Shipping</span><span class="sale-card-grid-val">${s.shipped?`${s.carrier||''} $${(s.shipping_cost||0).toFixed(2)}`:'Local'}</span>
+            ${s.miles?`<span class="sale-card-grid-label">Miles</span><span class="sale-card-grid-val">${s.miles} · $${irs.toFixed(2)} IRS</span>`:''}
+          </div>
+          ${s.notes?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:8px;">📝 ${esc(s.notes)}</div>`:''}
+          <div class="sale-card-actions">
+            <button onclick="openEditSaleModal('${s.id}')">✏️ Edit</button>
+            <button class="del-btn" onclick="deleteSale('${s.id}')">🗑️ Delete</button>
+          </div>
+        </div>`;
+      });
+    }
+  });
+  container.innerHTML=html;
 }
 function toggleMonth(key){
   collapsedMonths[key]=!collapsedMonths[key];
