@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='10' fill='%230f172a'/><rect x='8' y='8' width='18' height='40' rx='3' fill='%231e3a8a'/><rect x='30' y='8' width='18' height='18' rx='3' fill='%233b82f6'/><rect x='30' y='30' width='18' height='18' rx='3' fill='%2360a5fa' opacity='0.5'/></svg>"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -867,9 +868,11 @@ async function deleteInvItem(id){
 function renderSources(){
   const cat=document.getElementById('f-cat').value;
   const isPokemon=cat==='pokemon';
+  // Set default where for pokemon sources that are empty
+  if(isPokemon){sources.forEach(s=>{if(!s.where)s.where=POKEMON_WHERE[0];});}
   document.getElementById('sources-list').innerHTML=sources.map((s,i)=>{
     const whereInput=isPokemon
-      ?`<select onchange="sources[${i}].where=this.value;calcAvgCost();">${POKEMON_WHERE.map(w=>`<option${s.where===w?' selected':''}>${w}</option>`).join('')}</select>`
+      ?`<select onchange="sources[${i}].where=this.value;calcAvgCost();">${POKEMON_WHERE.map(w=>`<option${(s.where||POKEMON_WHERE[0])===w?' selected':''}>${w}</option>`).join('')}</select>`
       :`<input type="text" placeholder="Where bought" value="${esc(s.where||'')}" oninput="sources[${i}].where=this.value;"/>`;
     return `<div class="source-row">
       ${whereInput}
