@@ -221,7 +221,23 @@ tr:hover td{background:var(--accent-bg);}
   .period-tabs{gap:4px;}
   .period-tab{padding:5px 10px;font-size:10px;}
 }
-</style>
+
+/* RECAP CARD */
+.recap-card{background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);border-radius:20px;padding:2rem;color:white;position:relative;overflow:hidden;min-width:300px;}
+.recap-card::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(59,130,246,0.15);}
+.recap-card::after{content:'';position:absolute;bottom:-30px;left:-30px;width:120px;height:120px;border-radius:50%;background:rgba(96,165,250,0.1);}
+.recap-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;position:relative;z-index:1;}
+.recap-brand{font-size:12px;font-weight:700;letter-spacing:2px;color:#93c5fd;text-transform:uppercase;}
+.recap-month{font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);}
+.recap-profit{font-size:3.5rem;font-weight:800;letter-spacing:-2px;margin-bottom:0.25rem;position:relative;z-index:1;}
+.recap-profit-label{font-size:12px;color:#93c5fd;text-transform:uppercase;letter-spacing:1px;margin-bottom:1.5rem;position:relative;z-index:1;}
+.recap-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;position:relative;z-index:1;margin-bottom:1.5rem;}
+.recap-stat-val{font-size:1.4rem;font-weight:700;}
+.recap-stat-label{font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+.recap-best{background:rgba(255,255,255,0.08);border-radius:10px;padding:10px 14px;position:relative;z-index:1;}
+.recap-best-label{font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+.recap-best-name{font-size:13px;font-weight:600;color:white;}
+.recap-best-profit{font-size:13px;font-weight:700;color:#4ade80;float:right;}</style>
 </head>
 <body>
 
@@ -375,6 +391,7 @@ tr:hover td{background:var(--accent-bg);}
           <span class="search-icon">🔍</span>
           <input type="text" id="sales-search" placeholder="Search sales…" oninput="renderSalesTable()"/>
         </div>
+        <button class="btn" onclick="openRecapModal()">📊 Recap</button>
         <button class="btn primary" onclick="openDirectSaleModal()">+ Add Sale</button>
       </div>
       <div class="table-container">
@@ -976,7 +993,80 @@ function getSalesFiltered(){
     return catMatch&&qMatch&&dateMatch;
   });
 }
-// GOAL TRACKER
+// RECAP CARD
+function openRecapModal(){
+  // Build month options from sales data
+  const months={};
+  salesItems.forEach(s=>{
+    if(s.sale_date){
+      const key=s.sale_date.slice(0,7); // YYYY-MM
+      months[key]=true;
+    }
+  });
+  // Add current month even if no sales
+  const now=new Date();
+  const currentKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  months[currentKey]=true;
+  const sortedMonths=Object.keys(months).sort().reverse();
+  const sel=document.getElementById('recap-month-select');
+  sel.innerHTML=sortedMonths.map(m=>{
+    const [y,mo]=m.split('-');
+    const label=new Date(parseInt(y),parseInt(mo)-1,1).toLocaleString('default',{month:'long',year:'numeric'});
+    return`<option value="${m}">${label}</option>`;
+  }).join('');
+  renderRecapCard();
+  document.getElementById('recap-modal').style.display='flex';
+}
+function closeRecapModal(){document.getElementById('recap-modal').style.display='none';}
+function renderRecapCard(){
+  const selectedMonth=document.getElementById('recap-month-select').value;
+  const [y,mo]=selectedMonth.split('-');
+  const monthSales=salesItems.filter(s=>s.sale_date&&s.sale_date.startsWith(selectedMonth));
+  const rev=monthSales.reduce((s,r)=>s+(r.sale_price*r.qty_sold),0);
+  const cost=monthSales.reduce((s,r)=>s+(r.total_cost||0),0);
+  const profit=rev-cost;
+  const qty=monthSales.reduce((s,r)=>s+r.qty_sold,0);
+  const margin=rev>0?(profit/rev)*100:0;
+  // Best flip
+  let bestFlip=null;
+  let bestProfit=-Infinity;
+  monthSales.forEach(s=>{
+    const p=s.sale_price*s.qty_sold-(s.total_cost||0);
+    if(p>bestProfit){bestProfit=p;bestFlip=s;}
+  });
+  const monthLabel=new Date(parseInt(y),parseInt(mo)-1,1).toLocaleString('default',{month:'long',year:'numeric'});
+  const profitSign=profit>=0?'+':'';
+  document.getElementById('recap-card-wrap').innerHTML=`
+    <div class="recap-card">
+      <div class="recap-header">
+        <div class="recap-brand">TRACKER</div>
+        <div class="recap-month">${monthLabel}</div>
+      </div>
+      <div class="recap-profit">${profitSign}$${Math.abs(profit).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+      <div class="recap-profit-label">Total Profit</div>
+      <div class="recap-stats">
+        <div>
+          <div class="recap-stat-val">$${rev.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+          <div class="recap-stat-label">Revenue</div>
+        </div>
+        <div>
+          <div class="recap-stat-val">${qty}</div>
+          <div class="recap-stat-label">Items sold</div>
+        </div>
+        <div>
+          <div class="recap-stat-val">${margin.toFixed(1)}%</div>
+          <div class="recap-stat-label">Margin</div>
+        </div>
+      </div>
+      ${bestFlip?`<div class="recap-best">
+        <div class="recap-best-label">Best flip</div>
+        <div><span class="recap-best-name">${esc(bestFlip.item_name)}</span><span class="recap-best-profit">+$${bestProfit.toFixed(0)}</span></div>
+      </div>`:''}
+    </div>`;
+}
+function screenshotRecap(){
+  alert('To save: press Ctrl+Shift+S (Windows) or Cmd+Shift+4 (Mac) to screenshot just the card, or long press on mobile to save the image.');
+}
 let monthlyGoal=0;
 async function loadGoal(){
   const {data}=await sb.from('user_settings').select('value').eq('user_id',user.id).eq('key','monthly_goal').single();
@@ -1331,6 +1421,73 @@ async function deleteSale(id){
 }
 function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+// RECAP MODAL
+function openRecapModal(){
+  const months=[...new Set(salesItems.map(s=>getMonthKey(s.sale_date)).filter(k=>k!=='Unknown'))];
+  months.sort((a,b)=>new Date(b)-new Date(a));
+  const sel=document.getElementById('recap-month-select');
+  sel.innerHTML=months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(!months.length){sel.innerHTML='<option>No sales yet</option>';}
+  renderRecapCard();
+  document.getElementById('recap-modal').style.display='flex';
+}
+function closeRecapModal(){document.getElementById('recap-modal').style.display='none';}
+function renderRecapCard(){
+  const key=document.getElementById('recap-month-select').value;
+  if(!key){return;}
+  const rows=salesItems.filter(s=>getMonthKey(s.sale_date)===key);
+  if(!rows.length){document.getElementById('recap-card-wrap').innerHTML='<p style="color:var(--muted);font-size:13px;text-align:center;">No sales for this month</p>';return;}
+  const rev=rows.reduce((s,r)=>s+(r.sale_price*r.qty_sold),0);
+  const cost=rows.reduce((s,r)=>s+(r.total_cost||0),0);
+  const profit=rev-cost;
+  const margin=rev>0?(profit/rev)*100:0;
+  const qty=rows.reduce((s,r)=>s+r.qty_sold,0);
+  const goalHit=monthlyGoal>0&&profit>=monthlyGoal;
+  // Best flip
+  const best=rows.reduce((best,r)=>{
+    const p=r.sale_price*r.qty_sold-(r.total_cost||0);
+    return p>(best.profit||0)?{name:r.item_name,profit:p}:best;
+  },{});
+  document.getElementById('recap-card-wrap').innerHTML=`
+    <div id="recap-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);border-radius:16px;padding:24px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(59,130,246,0.15);"></div>
+      <div style="position:absolute;bottom:-20px;left:-20px;width:80px;height:80px;border-radius:50%;background:rgba(96,165,250,0.1);"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;position:relative;z-index:1;">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#93c5fd;text-transform:uppercase;">TRACKER</div>
+          <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);">${key}</div>
+        </div>
+        ${goalHit?'<div style="background:#4ade80;color:#000;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:0.5px;">🎯 GOAL HIT</div>':''}
+      </div>
+      <div style="font-size:3rem;font-weight:800;letter-spacing:-2px;color:white;position:relative;z-index:1;">${profit>=0?'+':''}$${profit.toFixed(0)}</div>
+      <div style="font-size:11px;color:#93c5fd;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px;position:relative;z-index:1;">Total Profit</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;position:relative;z-index:1;">
+        <div>
+          <div style="font-size:1.2rem;font-weight:700;color:white;">$${rev.toFixed(0)}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Revenue</div>
+        </div>
+        <div>
+          <div style="font-size:1.2rem;font-weight:700;color:white;">${qty}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Items Sold</div>
+        </div>
+        <div>
+          <div style="font-size:1.2rem;font-weight:700;color:white;">${margin.toFixed(1)}%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Margin</div>
+        </div>
+      </div>
+      ${best.name?`<div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:10px 14px;position:relative;z-index:1;">
+        <div style="font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Best Flip</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:13px;font-weight:600;color:white;">${esc(best.name)}</div>
+          <div style="font-size:13px;font-weight:700;color:#4ade80;">+$${best.profit.toFixed(0)}</div>
+        </div>
+      </div>`:''}
+    </div>`;
+}
+function screenshotRecap(){
+  alert('To save: right-click the card and "Save image as", or take a screenshot with Cmd+Shift+4 on Mac or the screenshot button on your phone.');
+}
+
 // DIRECT SALE MODAL
 let dsShipMode='local';
 function openDirectSaleModal(){
@@ -1510,6 +1667,25 @@ async function saveDirectSale(){
   <div class="modal-footer">
     <button class="btn-cancel" onclick="closeEditSaleModal()">Cancel</button>
     <button class="btn-save" onclick="saveEditSale()">Save Changes</button>
+  </div>
+</div>
+</div>
+
+<!-- RECAP MODAL -->
+<div id="recap-modal" style="display:none;" class="modal-bg" onclick="if(event.target===this)closeRecapModal()">
+<div class="modal" style="max-width:420px;">
+  <div class="modal-hdr">
+    <h2>Monthly Recap</h2>
+    <button class="close-btn" onclick="closeRecapModal()">✕</button>
+  </div>
+  <div style="margin-bottom:1rem;">
+    <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Select Month</label>
+    <select id="recap-month-select" onchange="renderRecapCard()" style="width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;font-family:var(--font);"></select>
+  </div>
+  <div id="recap-card-wrap" style="margin-bottom:1.25rem;"></div>
+  <div class="modal-footer" style="padding-top:0;border-top:none;">
+    <button class="btn-cancel" onclick="closeRecapModal()">Close</button>
+    <button class="btn-save" onclick="screenshotRecap()">📸 Screenshot tip</button>
   </div>
 </div>
 </div>
