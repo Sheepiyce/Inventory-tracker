@@ -22,6 +22,60 @@
   --radius:10px;--radius-sm:7px;--radius-lg:14px;
   --font:'Inter',sans-serif;
 }
+body.dark{
+  --bg:#0a0a0a;--s1:#111;--s2:#171717;--s3:#1f1f1f;
+  --border:#272727;--border2:#333;
+  --text:#f0f0f0;--muted:#888;--muted2:#555;
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.1);
+  --red:#f87171;--red-bg:rgba(248,113,113,0.1);
+  --accent-bg:rgba(59,130,246,0.1);
+  --navy:#3b82f6;--navy2:#60a5fa;--navy3:#93c5fd;
+}
+body.dark .topbar{background:#0a0a0a;border-bottom:1px solid #272727;}
+body.dark .auth-card{box-shadow:none;}
+body.dark th{background:var(--s2);}
+/* SORT HEADERS */
+th.sortable{cursor:pointer;user-select:none;}
+th.sortable:hover{color:var(--navy);}
+th.sort-asc::after{content:' ↑';}
+th.sort-desc::after{content:' ↓';}
+/* CALENDAR */
+.cal-wrap{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+.cal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+.cal-title{font-size:15px;font-weight:700;color:var(--navy);}
+.cal-nav{background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 12px;color:var(--text);cursor:pointer;font-family:var(--font);font-size:13px;}
+.cal-nav:hover{background:var(--s2);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-day-name{text-align:center;padding:8px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);}
+.cal-day{min-height:70px;padding:6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;position:relative;}
+.cal-day:hover{background:var(--accent-bg);}
+.cal-day:nth-child(7n){border-right:none;}
+.cal-day.other-month .cal-date{color:var(--muted2);}
+.cal-day.today{background:var(--accent-bg);}
+.cal-day.today .cal-date{background:var(--navy);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
+.cal-date{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
+.cal-event{background:var(--navy);color:#fff;font-size:9px;border-radius:4px;padding:1px 5px;margin-bottom:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;}
+.cal-event:hover{opacity:0.85;}
+/* MEETUP LIST */
+.meetup-list{display:flex;flex-direction:column;gap:8px;margin-top:1.25rem;}
+.meetup-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;}
+.meetup-info{flex:1;}
+.meetup-time{font-size:13px;font-weight:700;color:var(--navy);}
+.meetup-what{font-size:12px;color:var(--muted);margin-top:2px;}
+.meetup-actions{display:flex;gap:6px;}
+/* SETTINGS */
+.settings-section{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1rem;}
+.settings-section-title{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:1rem;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.settings-row:last-child{border-bottom:none;padding-bottom:0;}
+.settings-row-label{font-size:13px;font-weight:500;color:var(--text);}
+.settings-row-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.toggle-switch{position:relative;width:44px;height:24px;cursor:pointer;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:99px;transition:0.3s;}
+.toggle-slider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.3s;}
+.toggle-switch input:checked+.toggle-slider{background:var(--navy);}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(20px);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:100vh;overflow-x:hidden;}
 
@@ -270,6 +324,8 @@ tr:hover td{background:var(--accent-bg);}
     <div class="main-tabs">
       <button class="main-tab active" onclick="showPage('inventory')">📦 Inventory</button>
       <button class="main-tab" onclick="showPage('sales')">💰 Sales</button>
+      <button class="main-tab" onclick="showPage('meetups')">📅 Meetups</button>
+      <button class="main-tab" onclick="showPage('settings')">⚙️ Settings</button>
     </div>
     <div>
       <button class="tbtn" onclick="signOut()">Sign out</button>
@@ -308,12 +364,12 @@ tr:hover td{background:var(--accent-bg);}
         <table>
           <thead>
             <tr>
-              <th>Item</th>
+              <th class="sortable" onclick="sortInv('name')">Item</th>
               <th>Type</th>
               <th>Qty</th>
               <th>Where Bought</th>
-              <th>Date</th>
-              <th>Avg Cost</th>
+              <th class="sortable" onclick="sortInv('purchase_date')">Date</th>
+              <th class="sortable" onclick="sortInv('avg_cost')">Avg Cost</th>
               <th>Market Price</th>
               <th>Listed</th>
               <th>Proj. Profit</th>
@@ -427,6 +483,122 @@ tr:hover td{background:var(--accent-bg);}
       <div class="card-list" id="sales-cards"></div>
     </div>
   </div>
+
+  <!-- MEETUPS PAGE -->
+  <div class="page" id="page-meetups">
+    <div class="content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="cal-nav" onclick="prevMonth()">←</button>
+          <div class="cal-title" id="cal-title"></div>
+          <button class="cal-nav" onclick="nextMonth()">→</button>
+        </div>
+        <button class="btn primary" onclick="openMeetupModal()">+ Add Meetup</button>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal-grid" id="cal-day-names" style="grid-template-columns:repeat(7,1fr);"></div>
+        <div class="cal-grid" id="cal-grid" style="grid-template-columns:repeat(7,1fr);"></div>
+      </div>
+      <div id="meetup-list" class="meetup-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div class="content" style="max-width:600px;">
+      <div class="settings-section">
+        <div class="settings-section-title">Appearance</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Dark Mode</div>
+            <div class="settings-row-sub">Switch between light and dark theme</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)"/>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Preferences</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Your Name</div>
+            <div class="settings-row-sub">Used on monthly recap cards</div>
+          </div>
+          <input type="text" id="settings-name" placeholder="e.g. Adam" style="width:140px;padding:7px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font);text-align:right;" onchange="saveSetting('name',this.value)"/>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Default Category</div>
+            <div class="settings-row-sub">Pre-selected when adding items</div>
+          </div>
+          <select id="settings-default-cat" style="padding:7px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font);" onchange="saveSetting('default_cat',this.value)">
+            <option value="pokemon">⚡ Pokémon</option>
+            <option value="sneakers">👟 Sneakers</option>
+            <option value="misc">📦 Misc</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Monthly Profit Goal ($)</div>
+            <div class="settings-row-sub">Shown on the sales dashboard</div>
+          </div>
+          <input type="number" id="settings-goal" placeholder="0" style="width:100px;padding:7px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font);text-align:right;" onchange="saveGoalFromSettings(this.value)"/>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Reminder Email</div>
+            <div class="settings-row-sub">Where to send meetup reminders</div>
+          </div>
+          <input type="email" id="settings-email" placeholder="you@email.com" style="width:180px;padding:7px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:var(--font);" onchange="saveSetting('reminder_email',this.value)"/>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Account</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Signed in as</div>
+            <div class="settings-row-sub" id="settings-email-display"></div>
+          </div>
+          <button class="btn" onclick="signOut()" style="color:var(--red);border-color:var(--red-bg);">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MEETUP MODAL -->
+<div id="meetup-modal" style="display:none;" class="modal-bg" onclick="if(event.target===this)closeMeetupModal()">
+<div class="modal" style="max-width:440px;">
+  <div class="modal-hdr">
+    <h2 id="meetup-modal-title">Add Meetup</h2>
+    <button class="close-btn" onclick="closeMeetupModal()">✕</button>
+  </div>
+  <div class="form-grid">
+    <div class="fg2">
+      <label>Date</label>
+      <input type="date" id="m-date"/>
+    </div>
+    <div class="fg2">
+      <label>Time</label>
+      <input type="time" id="m-time"/>
+    </div>
+    <div class="fg2 full">
+      <label>What You're Selling</label>
+      <input type="text" id="m-what" placeholder="e.g. Chaos Rising ETBs, Moonlit Tins"/>
+    </div>
+    <div class="fg2 full">
+      <label>Notes (optional)</label>
+      <input type="text" id="m-notes" placeholder="e.g. 3 buyers coming"/>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-cancel" onclick="closeMeetupModal()">Cancel</button>
+    <button class="btn-save" onclick="saveMeetup()">Save Meetup</button>
+  </div>
+</div>
 </div>
 
 <!-- INVENTORY MODAL -->
@@ -477,9 +649,8 @@ tr:hover td{background:var(--accent-bg);}
       <div class="fg2">
         <label>Status</label>
         <select id="f-status">
-          <option value="hold">Holding</option>
           <option value="listed">Listed</option>
-          <option value="sold">Sold</option>
+          <option value="hold">Holding</option>
         </select>
       </div>
       <div class="fg2">
@@ -680,14 +851,154 @@ async function loadAll(){
   ]);
   invItems=inv||[];salesItems=sales||[];
   renderInvTable();renderSalesTable();renderDash();renderInvStats();
-  loadGoal();
+  loadGoal();loadSettings();loadMeetups();
 }
 
 // PAGES
 function showPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&p==='inventory')||(i===1&&p==='sales')));
+  document.querySelectorAll('.main-tab').forEach((t,i)=>{
+    t.classList.toggle('active',['inventory','sales','meetups','settings'][i]===p);
+  });
+  if(p==='meetups')renderCalendar();
+}
+
+// SORT
+let sortField='created_at',sortDir='desc';
+function sortInv(field){
+  if(sortField===field){sortDir=sortDir==='asc'?'desc':'asc';}
+  else{sortField=field;sortDir='asc';}
+  document.querySelectorAll('th.sortable').forEach(th=>th.classList.remove('sort-asc','sort-desc'));
+  const ths=document.querySelectorAll('th.sortable');
+  const map={name:0,purchase_date:1,avg_cost:2};
+  if(map[field]!==undefined)ths[map[field]]?.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');
+  renderInvTable();
+}
+function getSortedItems(){
+  return [...getInvFiltered()].sort((a,b)=>{
+    if(sortField==='avg_cost'){const av=parseFloat(a.avg_cost)||0,bv=parseFloat(b.avg_cost)||0;return sortDir==='asc'?av-bv:bv-av;}
+    if(sortField==='purchase_date'){const av=a.purchase_date||'',bv=b.purchase_date||'';return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);}
+    if(sortField==='name'){return sortDir==='asc'?(a.name||'').localeCompare(b.name||''):(b.name||'').localeCompare(a.name||'');}
+    return 0;
+  });
+}
+
+// DUPLICATE
+async function duplicateItem(id){
+  const item=invItems.find(i=>i.id===id);if(!item)return;
+  const{id:_,created_at:__,...rest}=item;
+  const{error}=await sb.from('items').insert({...rest,user_id:user.id});
+  if(error){alert('Error: '+error.message);return;}
+  await loadAll();
+}
+
+// SETTINGS
+let userSettings={};
+async function loadSettings(){
+  const{data}=await sb.from('user_settings').select('*').eq('user_id',user.id);
+  if(data){data.forEach(s=>{userSettings[s.key]=s.value;});}
+  const dark=userSettings.dark_mode==='true';
+  document.body.classList.toggle('dark',dark);
+  document.getElementById('dark-mode-toggle').checked=dark;
+  if(userSettings.name)document.getElementById('settings-name').value=userSettings.name;
+  if(userSettings.default_cat)document.getElementById('settings-default-cat').value=userSettings.default_cat;
+  if(userSettings.reminder_email)document.getElementById('settings-email').value=userSettings.reminder_email;
+  if(userSettings.monthly_goal){monthlyGoal=parseFloat(userSettings.monthly_goal)||0;document.getElementById('settings-goal').value=monthlyGoal||'';}
+  if(user)document.getElementById('settings-email-display').textContent=user.email;
+}
+async function saveSetting(key,value){
+  userSettings[key]=value;
+  await sb.from('user_settings').upsert({user_id:user.id,key,value:String(value)},{onConflict:'user_id,key'});
+}
+async function toggleDarkMode(on){
+  document.body.classList.toggle('dark',on);
+  await saveSetting('dark_mode',on?'true':'false');
+}
+async function saveGoalFromSettings(val){
+  monthlyGoal=parseFloat(val)||0;
+  await saveSetting('monthly_goal',String(monthlyGoal));
+  renderDash();
+}
+
+// CALENDAR & MEETUPS
+let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
+let meetups=[];let editingMeetupId=null;
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function prevMonth(){if(calMonth===0){calMonth=11;calYear--;}else{calMonth--;}renderCalendar();}
+function nextMonth(){if(calMonth===11){calMonth=0;calYear++;}else{calMonth++;}renderCalendar();}
+function renderCalendar(){
+  const now=new Date();
+  document.getElementById('cal-title').textContent=new Date(calYear,calMonth,1).toLocaleString('default',{month:'long',year:'numeric'});
+  document.getElementById('cal-day-names').innerHTML=DAYS.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+  let html='';
+  for(let i=firstDay-1;i>=0;i--){html+=`<div class="cal-day other-month"><div class="cal-date">${daysInPrev-i}</div></div>`;}
+  for(let d=1;d<=daysInMonth;d++){
+    const isToday=d===now.getDate()&&calMonth===now.getMonth()&&calYear===now.getFullYear();
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayMeetups=meetups.filter(m=>m.meetup_date===dateStr);
+    const events=dayMeetups.map(m=>`<div class="cal-event" onclick="event.stopPropagation();openEditMeetup('${m.id}')">${m.meetup_time?m.meetup_time.slice(0,5)+' ':''} ${esc(m.what_selling||'').slice(0,12)}</div>`).join('');
+    html+=`<div class="cal-day${isToday?' today':''}" onclick="openMeetupModalWithDate('${dateStr}')"><div class="cal-date">${d}</div>${events}</div>`;
+  }
+  const remaining=(7-((firstDay+daysInMonth)%7))%7;
+  for(let i=1;i<=remaining;i++){html+=`<div class="cal-day other-month"><div class="cal-date">${i}</div></div>`;}
+  document.getElementById('cal-grid').innerHTML=html;
+  renderUpcomingMeetups();
+}
+function renderUpcomingMeetups(){
+  const today=new Date().toISOString().split('T')[0];
+  const upcoming=meetups.filter(m=>m.meetup_date>=today).sort((a,b)=>a.meetup_date.localeCompare(b.meetup_date));
+  const list=document.getElementById('meetup-list');
+  if(!upcoming.length){list.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:1rem;">No upcoming meetups</div>';return;}
+  list.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;margin-top:1rem;">Upcoming</div>`+
+  upcoming.map(m=>`<div class="meetup-card"><div class="meetup-info"><div class="meetup-time">${fmtDate(m.meetup_date)}${m.meetup_time?' · '+fmtTime(m.meetup_time):''}</div><div class="meetup-what">${esc(m.what_selling||'')}${m.notes?' · '+esc(m.notes):''}</div></div><div class="meetup-actions"><button class="icon-btn" onclick="openEditMeetup('${m.id}')">✏️</button><button class="icon-btn del-btn" onclick="deleteMeetup('${m.id}')">🗑️</button></div></div>`).join('');
+}
+function fmtTime(t){if(!t)return'';const[h,m]=t.split(':');const hr=parseInt(h);return`${hr>12?hr-12:hr||12}:${m}${hr>=12?'pm':'am'}`;}
+async function loadMeetups(){
+  const{data}=await sb.from('meetups').select('*').eq('user_id',user.id).order('meetup_date',{ascending:true});
+  meetups=data||[];
+  if(document.getElementById('page-meetups').classList.contains('active'))renderCalendar();
+}
+function openMeetupModal(){openMeetupModalWithDate(new Date().toISOString().split('T')[0]);}
+function openMeetupModalWithDate(dateStr){
+  editingMeetupId=null;
+  document.getElementById('meetup-modal-title').textContent='Add Meetup';
+  document.getElementById('m-date').value=dateStr;
+  document.getElementById('m-time').value='';
+  document.getElementById('m-what').value='';
+  document.getElementById('m-notes').value='';
+  document.getElementById('meetup-modal').style.display='flex';
+}
+function openEditMeetup(id){
+  const m=meetups.find(x=>x.id===id);if(!m)return;
+  editingMeetupId=id;
+  document.getElementById('meetup-modal-title').textContent='Edit Meetup';
+  document.getElementById('m-date').value=m.meetup_date||'';
+  document.getElementById('m-time').value=m.meetup_time||'';
+  document.getElementById('m-what').value=m.what_selling||'';
+  document.getElementById('m-notes').value=m.notes||'';
+  document.getElementById('meetup-modal').style.display='flex';
+}
+function closeMeetupModal(){document.getElementById('meetup-modal').style.display='none';}
+async function saveMeetup(){
+  const date=document.getElementById('m-date').value;
+  const what=document.getElementById('m-what').value.trim();
+  if(!date||!what){alert('Enter a date and what you\'re selling');return;}
+  const payload={user_id:user.id,meetup_date:date,meetup_time:document.getElementById('m-time').value||null,what_selling:what,notes:document.getElementById('m-notes').value.trim()||null};
+  const btn=document.querySelector('#meetup-modal .btn-save');btn.textContent='Saving…';btn.disabled=true;
+  let error;
+  if(editingMeetupId){({error}=await sb.from('meetups').update(payload).eq('id',editingMeetupId));}
+  else{({error}=await sb.from('meetups').insert(payload));}
+  btn.textContent='Save Meetup';btn.disabled=false;
+  if(error){alert('Error: '+error.message);return;}
+  closeMeetupModal();await loadMeetups();
+}
+async function deleteMeetup(id){
+  if(!confirm('Delete this meetup?'))return;
+  await sb.from('meetups').delete().eq('id',id);await loadMeetups();
 }
 function setInvTab(t,el){invTab=t;document.querySelectorAll('#inv-sub-tabs .sub-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderInvTable();renderInvStats();}
 function setSalesTab(t,el){salesTab=t;document.querySelectorAll('#page-sales .sub-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderSalesTable();renderDash();}
@@ -715,7 +1026,7 @@ function getInvFiltered(){
   return invItems.filter(i=>(invTab==='all'||i.category===invTab)&&(!q||i.name.toLowerCase().includes(q)));
 }
 function renderInvTable(){
-  const rows=getInvFiltered();
+  const rows=getSortedItems();
   const tbody=document.getElementById('inv-tbody');
   const empty=document.getElementById('inv-empty');
   if(!rows.length){tbody.innerHTML='';empty.style.display='block';return;}
@@ -755,6 +1066,7 @@ function renderInvTable(){
       <td>${statusBadge}</td>
       <td><div class="row-actions">
         <button class="icon-btn" onclick="editInvItem('${item.id}')">✏️</button>
+        <button class="icon-btn" onclick="duplicateItem('${item.id}')" title="Duplicate">⧉</button>
         <button class="icon-btn sell-btn" onclick="openSaleModal('${item.id}')" title="Record sale">💰</button>
         <button class="icon-btn del-btn" onclick="deleteInvItem('${item.id}')">🗑️</button>
       </div></td>
@@ -814,7 +1126,7 @@ function renderInvCards(rows){
 function openInvModal(){
   editingInvId=null;sources=[{where:'',qty:1,cost:''}];
   document.getElementById('inv-modal-title').textContent='Add Item';
-  document.getElementById('f-cat').value='pokemon';
+  document.getElementById('f-cat').value=userSettings.default_cat||'pokemon';
   document.getElementById('f-name').value='';
   document.getElementById('f-qty').value=1;
   document.getElementById('f-status').value='hold';
