@@ -370,7 +370,7 @@ tr:hover td{background:var(--accent-bg);}
               <th>Where Bought</th>
               <th class="sortable" onclick="sortInv('purchase_date')">Date</th>
               <th class="sortable" onclick="sortInv('avg_cost')">Avg Cost</th>
-              <th>Market Price</th>
+              <th class="sortable" onclick="sortInv('market_price')">Market Price</th>
               <th>Listed</th>
               <th>Proj. Profit</th>
               <th>Margin</th>
@@ -457,14 +457,14 @@ tr:hover td{background:var(--accent-bg);}
               <th>Item</th>
               <th>Category</th>
               <th>Qty</th>
-              <th>Sale Date</th>
+              <th class="sortable" onclick="sortSales('sale_date')">Sale Date</th>
               <th>Days to Sell</th>
               <th>Where Bought</th>
               <th>Sold On</th>
               <th>Shipping</th>
-              <th>Sale Price</th>
+              <th class="sortable" onclick="sortSales('sale_price')">Sale Price</th>
               <th>Cost</th>
-              <th>Profit</th>
+              <th class="sortable" onclick="sortSales('profit')">Profit</th>
               <th>Margin</th>
               <th>Miles</th>
               <th>IRS Deduction</th>
@@ -622,7 +622,7 @@ tr:hover td{background:var(--accent-bg);}
       </div>
       <div class="fg2 full autocomplete-wrap">
         <label>Item Name</label>
-        <input type="text" id="f-name" placeholder="Start typing…" oninput="onNameInput()" autocomplete="off"/>
+        <input type="text" id="f-name" placeholder="Start typing…" oninput="onNameInput();this.value=this.value.charAt(0).toUpperCase()+this.value.slice(1);" autocomplete="off"/>
         <div class="autocomplete-list" id="ac-list"></div>
       </div>
       <div class="fg2 full" id="f-pokemon-type-row">
@@ -866,21 +866,37 @@ function showPage(p){
 
 // SORT
 let sortField='created_at',sortDir='desc';
+let salesSortField=null,salesSortDir='desc';
 function sortInv(field){
   if(sortField===field){sortDir=sortDir==='asc'?'desc':'asc';}
-  else{sortField=field;sortDir='asc';}
-  document.querySelectorAll('th.sortable').forEach(th=>th.classList.remove('sort-asc','sort-desc'));
-  const ths=document.querySelectorAll('th.sortable');
-  const map={name:0,purchase_date:1,avg_cost:2};
-  if(map[field]!==undefined)ths[map[field]]?.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');
+  else{sortField=field;sortDir=(field==='avg_cost'||field==='market_price')?'desc':'asc';}
+  document.querySelectorAll('#page-inventory th.sortable').forEach(th=>th.classList.remove('sort-asc','sort-desc'));
+  event.currentTarget.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');
   renderInvTable();
 }
 function getSortedItems(){
   return [...getInvFiltered()].sort((a,b)=>{
-    if(sortField==='avg_cost'){const av=parseFloat(a.avg_cost)||0,bv=parseFloat(b.avg_cost)||0;return sortDir==='asc'?av-bv:bv-av;}
+    if(sortField==='avg_cost'||sortField==='market_price'){const av=parseFloat(a[sortField])||0,bv=parseFloat(b[sortField])||0;return sortDir==='asc'?av-bv:bv-av;}
     if(sortField==='purchase_date'){const av=a.purchase_date||'',bv=b.purchase_date||'';return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);}
     if(sortField==='name'){return sortDir==='asc'?(a.name||'').localeCompare(b.name||''):(b.name||'').localeCompare(a.name||'');}
     return 0;
+  });
+}
+function sortSales(field){
+  if(salesSortField===field){salesSortDir=salesSortDir==='asc'?'desc':'asc';}
+  else{salesSortField=field;salesSortDir='desc';}
+  document.querySelectorAll('#page-sales th.sortable').forEach(th=>th.classList.remove('sort-asc','sort-desc'));
+  event.currentTarget.classList.add(salesSortDir==='asc'?'sort-asc':'sort-desc');
+  renderSalesTable();
+}
+function getSalesSorted(rows){
+  if(!salesSortField)return rows;
+  return [...rows].sort((a,b)=>{
+    let av,bv;
+    if(salesSortField==='sale_price'){av=a.sale_price*a.qty_sold;bv=b.sale_price*b.qty_sold;}
+    else if(salesSortField==='profit'){av=a.sale_price*a.qty_sold-(a.total_cost||0);bv=b.sale_price*b.qty_sold-(b.total_cost||0);}
+    else if(salesSortField==='sale_date'){return salesSortDir==='asc'?(a.sale_date||'').localeCompare(b.sale_date||''):(b.sale_date||'').localeCompare(a.sale_date||'');}
+    return salesSortDir==='asc'?av-bv:bv-av;
   });
 }
 
@@ -1129,7 +1145,7 @@ function openInvModal(){
   document.getElementById('f-cat').value=userSettings.default_cat||'pokemon';
   document.getElementById('f-name').value='';
   document.getElementById('f-qty').value=1;
-  document.getElementById('f-status').value='hold';
+  document.getElementById('f-status').value='listed';
   document.getElementById('f-purchase-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('f-listed').value='';
   document.getElementById('f-market').value='';
@@ -1454,7 +1470,7 @@ function renderSalesTable(){
 
   // Group by month
   const groups={};
-  rows.forEach(s=>{
+  getSalesSorted(rows).forEach(s=>{
     const key=getMonthKey(s.sale_date);
     if(!groups[key])groups[key]=[];
     groups[key].push(s);
