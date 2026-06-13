@@ -1213,15 +1213,15 @@ async function deleteInvItem(id){
 function renderSources(){
   const cat=document.getElementById('f-cat').value;
   const isPokemon=cat==='pokemon';
-  // Set default where for pokemon sources that are empty
   if(isPokemon){sources.forEach(s=>{if(!s.where)s.where=POKEMON_WHERE[0];});}
   document.getElementById('sources-list').innerHTML=sources.map((s,i)=>{
     const whereInput=isPokemon
       ?`<select onchange="sources[${i}].where=this.value;calcAvgCost();">${POKEMON_WHERE.map(w=>`<option${(s.where||POKEMON_WHERE[0])===w?' selected':''}>${w}</option>`).join('')}</select>`
       :`<input type="text" placeholder="Where bought" value="${esc(s.where||'')}" oninput="sources[${i}].where=this.value;"/>`;
-    return `<div class="source-row">
+    return `<div class="source-row" style="grid-template-columns:1.5fr 60px 1fr auto;">
       ${whereInput}
-      <input type="number" placeholder="Cost per unit ($)" value="${s.cost||''}" step="0.01" min="0" oninput="sources[${i}].cost=this.value;calcAvgCost();"/>
+      <input type="number" placeholder="Qty" value="${s.qty||1}" min="1" step="1" title="Qty from this source" oninput="sources[${i}].qty=parseInt(this.value)||1;calcAvgCost();"/>
+      <input type="number" placeholder="Cost/unit ($)" value="${s.cost||''}" step="0.01" min="0" oninput="sources[${i}].cost=this.value;calcAvgCost();"/>
       <button class="remove-src" onclick="removeSource(${i})" ${sources.length<=1?'disabled':''}>✕</button>
     </div>`;
   }).join('');
@@ -1231,17 +1231,29 @@ function removeSource(i){if(sources.length<=1)return;sources.splice(i,1);renderS
 function calcAvgCost(){
   const valid=sources.filter(s=>s.cost&&parseFloat(s.cost)>0);
   if(!valid.length){document.getElementById('avg-cost-display').style.display='none';document.getElementById('f-avg-cost-display').value='';calcProjected();return 0;}
-  const totalQty=parseInt(document.getElementById('f-qty').value)||1;
-  const perSrc=totalQty/valid.length;
-  const total=valid.reduce((sum,s)=>sum+(parseFloat(s.cost)*perSrc),0);
-  const avg=total/totalQty;
+  // Weighted average: sum(qty * cost) / sum(qty)
+  const totalCost=valid.reduce((sum,s)=>sum+(parseFloat(s.cost)||0)*(parseInt(s.qty)||1),0);
+  const totalQty=valid.reduce((sum,s)=>sum+(parseInt(s.qty)||1),0);
+  const avg=totalCost/totalQty;
+  // Update the qty field to match total units across sources
+  const qtyEl=document.getElementById('f-qty');
+  const allSourcesHaveQty=sources.every(s=>s.cost&&parseFloat(s.cost)>0);
+  if(allSourcesHaveQty){qtyEl.value=totalQty;}
   const disp=document.getElementById('avg-cost-display');
-  disp.style.display='block';disp.textContent=`Avg cost: $${avg.toFixed(2)} / unit`;
+  disp.style.display='block';disp.textContent=`Avg cost: $${avg.toFixed(2)} / unit (${totalQty} units total)`;
   document.getElementById('f-avg-cost-display').value='$'+avg.toFixed(2);
   calcProjected(avg);return avg;
 }
 function calcProjected(avg){
-  if(avg===undefined){const v=sources.filter(s=>s.cost&&parseFloat(s.cost)>0);if(!v.length){avg=0;}else{const tq=parseInt(document.getElementById('f-qty').value)||1;avg=v.reduce((sum,s)=>sum+(parseFloat(s.cost)*(tq/v.length)),0)/tq;}}
+  if(avg===undefined){
+    const v=sources.filter(s=>s.cost&&parseFloat(s.cost)>0);
+    if(!v.length){avg=0;}
+    else{
+      const tc=v.reduce((sum,s)=>sum+(parseFloat(s.cost)||0)*(parseInt(s.qty)||1),0);
+      const tq=v.reduce((sum,s)=>sum+(parseInt(s.qty)||1),0);
+      avg=tc/tq;
+    }
+  }
   const listed=parseFloat(document.getElementById('f-listed').value)||0;
   if(avg>0&&listed>0){const p=listed-avg;const m=(p/listed)*100;document.getElementById('f-proj-profit').value=(p>=0?'+':'')+'$'+p.toFixed(2);document.getElementById('f-proj-margin').value=m.toFixed(1)+'%';}
   else{document.getElementById('f-proj-profit').value='';document.getElementById('f-proj-margin').value='';}
