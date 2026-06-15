@@ -358,6 +358,7 @@ tr:hover td{background:var(--accent-bg);}
           <span class="search-icon">🔍</span>
           <input type="text" id="inv-search" placeholder="Search inventory…" oninput="renderInvTable()"/>
         </div>
+        <button class="btn" onclick="copyStockList(this)">📋 Copy Stock List</button>
         <button class="btn primary" onclick="openInvModal()">+ Add Item</button>
       </div>
       <div class="table-container">
@@ -1019,6 +1020,21 @@ async function deleteMeetup(id){
 function setInvTab(t,el){invTab=t;document.querySelectorAll('#inv-sub-tabs .sub-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderInvTable();renderInvStats();}
 function setSalesTab(t,el){salesTab=t;document.querySelectorAll('#page-sales .sub-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderSalesTable();renderDash();}
 function setPeriod(p,el){salesPeriod=p;document.querySelectorAll('.period-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderDash();renderSalesTable();}
+
+// STOCK LIST (for messaging buyers)
+function copyStockList(btn){
+  const items=invItems.filter(i=>i.status==='listed'&&(invTab==='all'||i.category===invTab));
+  const priority=items.filter(i=>/pack|sleeve/i.test(i.name));
+  const rest=items.filter(i=>!/pack|sleeve/i.test(i.name));
+  const lines=[...priority,...rest].map(i=>`${i.name} x${i.qty||1}`);
+  const text=lines.join('\n');
+  if(!text){alert('No listed items to copy.');return;}
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig=btn.textContent;
+    btn.textContent='✅ Copied!';
+    setTimeout(()=>{btn.textContent=orig;},1500);
+  }).catch(()=>{alert('Could not copy — your browser may be blocking clipboard access.');});
+}
 
 // INV STATS
 function renderInvStats(){
