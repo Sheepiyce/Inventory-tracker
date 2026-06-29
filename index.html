@@ -1023,10 +1023,12 @@ function setPeriod(p,el){salesPeriod=p;document.querySelectorAll('.period-tab').
 
 // STOCK LIST (for messaging buyers)
 function copyStockList(btn){
-  const items=invItems.filter(i=>i.status==='listed'&&(invTab==='all'||i.category===invTab));
+  const q=document.getElementById('inv-search').value.toLowerCase();
+  let items=invItems.filter(i=>i.status==='listed'&&(invTab==='all'||i.category===invTab));
+  if(q)items=items.filter(i=>i.name.toLowerCase().includes(q));
   const priority=items.filter(i=>/pack|sleeve/i.test(i.name));
   const rest=items.filter(i=>!/pack|sleeve/i.test(i.name));
-  const lines=[...priority,...rest].map(i=>`${i.name} x${i.qty||1}`);
+  const lines=[...priority,...rest].map(i=>`${i.name} (${i.qty||1})`);
   const text=lines.join('\n');
   if(!text){alert('No listed items to copy.');return;}
   navigator.clipboard.writeText(text).then(()=>{
@@ -1232,15 +1234,36 @@ function renderSources(){
   if(isPokemon){sources.forEach(s=>{if(!s.where)s.where=POKEMON_WHERE[0];});}
   document.getElementById('sources-list').innerHTML=sources.map((s,i)=>{
     const whereInput=isPokemon
-      ?`<select onchange="sources[${i}].where=this.value;calcAvgCost();">${POKEMON_WHERE.map(w=>`<option${(s.where||POKEMON_WHERE[0])===w?' selected':''}>${w}</option>`).join('')}</select>`
-      :`<input type="text" placeholder="Where bought" value="${esc(s.where||'')}" oninput="sources[${i}].where=this.value;"/>`;
+      ?`<select onchange="sources[${i}].where=this.value;autoFillCost(${i});calcAvgCost();">${POKEMON_WHERE.map(w=>`<option${(s.where||POKEMON_WHERE[0])===w?' selected':''}>${w}</option>`).join('')}</select>`
+      :`<input type="text" placeholder="Where bought" value="${esc(s.where||'')}" oninput="sources[${i}].where=this.value;" onblur="autoFillCost(${i});"/>`;
     return `<div class="source-row" style="grid-template-columns:1.5fr 60px 1fr auto;">
       ${whereInput}
       <input type="number" placeholder="Qty" value="${s.qty||1}" min="1" step="1" title="Qty from this source" oninput="sources[${i}].qty=parseInt(this.value)||1;calcAvgCost();"/>
-      <input type="number" placeholder="Cost/unit ($)" value="${s.cost||''}" step="0.01" min="0" oninput="sources[${i}].cost=this.value;calcAvgCost();"/>
+      <input type="number" id="src-cost-${i}" placeholder="Cost/unit ($)" value="${s.cost||''}" step="0.01" min="0" oninput="sources[${i}].cost=this.value;calcAvgCost();"/>
       <button class="remove-src" onclick="removeSource(${i})" ${sources.length<=1?'disabled':''}>✕</button>
     </div>`;
   }).join('');
+}
+function autoFillCost(i){
+  // Only auto-fill if cost field is empty
+  if(sources[i].cost)return;
+  const name=document.getElementById('f-name').value.trim().toLowerCase();
+  const where=(sources[i].where||'').toLowerCase();
+  if(!name||!where)return;
+  // Search past inventory items for same name + store combo
+  const match=invItems.find(item=>{
+    if(item.name.toLowerCase()!==name)return false;
+    return(item.sources||[]).some(s=>(s.where||'').toLowerCase()===where&&parseFloat(s.cost)>0);
+  });
+  if(match){
+    const pastSrc=match.sources.find(s=>(s.where||'').toLowerCase()===where&&parseFloat(s.cost)>0);
+    if(pastSrc){
+      sources[i].cost=pastSrc.cost;
+      const el=document.getElementById(`src-cost-${i}`);
+      if(el){el.value=pastSrc.cost;el.style.background='var(--accent-bg)';el.title=`Auto-filled from past purchase`;setTimeout(()=>{el.style.background='';},1500);}
+      calcAvgCost();
+    }
+  }
 }
 function addSourceRow(){sources.push({where:'',qty:1,cost:''});renderSources();}
 function removeSource(i){if(sources.length<=1)return;sources.splice(i,1);renderSources();calcAvgCost();}
@@ -1303,6 +1326,8 @@ function selectAC(name){
   const past=invItems.find(i=>i.name===name&&i.category===document.getElementById('f-cat').value);
   if(past&&past.market_price){document.getElementById('f-market').value=past.market_price;calcProjected();}
   updateMarketLink();
+  // Auto-fill costs for any sources already set
+  sources.forEach((_,i)=>autoFillCost(i));
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.autocomplete-wrap'))document.getElementById('ac-list').style.display='none';});
 function updateMarketLink(){
