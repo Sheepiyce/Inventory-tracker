@@ -1343,15 +1343,22 @@ function updateMarketLink(){
 // SALES DASH
 function getPeriodDates(){
   const now=new Date();
-  const todayStr=now.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+  const todayStr=now.toLocaleDateString('en-CA'); // YYYY-MM-DD local
   const nowY=now.getFullYear(),nowM=now.getMonth(),nowD=now.getDate();
-  if(salesPeriod==='today'){return{todayOnly:true,todayStr};}
-  const start=new Date(nowY,nowM,nowD,0,0,0,0);
-  if(salesPeriod==='week'){start.setDate(nowD-now.getDay());}
-  else if(salesPeriod==='month'){start.setDate(1);}
-  else if(salesPeriod==='year'){start.setMonth(0,1);}
-  else{return null;}
-  return{start,end:new Date()};
+  const pad=n=>String(n).padStart(2,'0');
+  if(salesPeriod==='today'){return{startStr:todayStr,endStr:todayStr};}
+  if(salesPeriod==='week'){
+    const sun=new Date(nowY,nowM,nowD-now.getDay());
+    const startStr=`${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
+    return{startStr,endStr:todayStr};
+  }
+  if(salesPeriod==='month'){
+    return{startStr:`${nowY}-${pad(nowM+1)}-01`,endStr:todayStr};
+  }
+  if(salesPeriod==='year'){
+    return{startStr:`${nowY}-01-01`,endStr:todayStr};
+  }
+  return null;
 }
 function getSalesFiltered(){
   const q=document.getElementById('sales-search').value.toLowerCase();
@@ -1361,15 +1368,7 @@ function getSalesFiltered(){
     const qMatch=!q||s.item_name.toLowerCase().includes(q);
     let dateMatch=true;
     if(range&&s.sale_date){
-      if(range.todayOnly){
-        // Compare date strings directly to avoid timezone issues
-        dateMatch=s.sale_date===range.todayStr;
-      } else {
-        // Parse date string as local date, not UTC
-        const parts=s.sale_date.split('-');
-        const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
-        dateMatch=d>=range.start&&d<=range.end;
-      }
+      dateMatch=s.sale_date>=range.startStr&&s.sale_date<=range.endStr;
     }
     return catMatch&&qMatch&&dateMatch;
   });
