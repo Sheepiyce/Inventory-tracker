@@ -1790,7 +1790,10 @@ async function saveSale(){
   const btn=document.querySelector('#sale-modal .btn-save');btn.textContent='Saving…';btn.disabled=true;
   const {error}=await sb.from('sales').insert(payload);
   if(error){alert('Error: '+error.message);btn.textContent='Record Sale';btn.disabled=false;return;}
-  const newQty=Math.max(0,(saleSrcItem.qty||1)-qty);
+  // Fetch fresh qty from DB to avoid stale local state
+  const {data:freshItem}=await sb.from('items').select('qty').eq('id',saleSrcItem.id).single();
+  const currentQty=freshItem?freshItem.qty:saleSrcItem.qty||1;
+  const newQty=Math.max(0,currentQty-qty);
   await sb.from('items').update({qty:newQty,status:newQty<=0?'sold':saleSrcItem.status}).eq('id',saleSrcItem.id);
   btn.textContent='Record Sale';btn.disabled=false;
   closeSaleModal();await loadAll();
