@@ -1277,7 +1277,7 @@ function calcAvgCost(){
   // Update the qty field to match total units across sources
   const qtyEl=document.getElementById('f-qty');
   const allSourcesHaveQty=sources.every(s=>s.cost&&parseFloat(s.cost)>0);
-  if(allSourcesHaveQty){qtyEl.value=totalQty;}
+  if(allSourcesHaveQty&&!editingInvId){qtyEl.value=totalQty;}
   const disp=document.getElementById('avg-cost-display');
   disp.style.display='block';disp.textContent=`Avg cost: $${avg.toFixed(2)} / unit (${totalQty} units total)`;
   document.getElementById('f-avg-cost-display').value='$'+avg.toFixed(2);
